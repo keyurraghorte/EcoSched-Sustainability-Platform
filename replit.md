@@ -1,6 +1,6 @@
-# [Project name]
+# EcoSched
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+EcoSched helps users explore carbon-aware cloud workload scheduling using renewable energy, weather context, and Before vs After comparisons.
 
 ## Run & Operate
 
@@ -22,15 +22,22 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/ecosched` — deployable React + Vite product UI and analysis flow
+- `artifacts/api-server/src/routes/ecosched.ts` — catalog, weather, validation, dashboard, and scheduling API
+- `lib/api-spec/openapi.yaml` — source of truth for API contracts
+- `artifacts/ecosched/src/index.css` — EcoSched visual tokens and theme
+- `attached_assets/ecosched-logo.png` — uploaded EcoSched logo used across the app
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- The first dataset is intentionally labeled `DEMO DATA`; live weather and emission factors remain configurable rather than being represented as real measurements.
+- Scheduling is separated from the UI and exposes both a segment-tree availability query path and decreasing energy bin-packing heuristic through the API.
+- The UI uses generated OpenAPI React Query hooks for every catalog, dashboard, validation, weather, and scheduling request.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Brand-led landing page using the uploaded EcoSched logo and logo-derived green/blue/yellow/light-blue semantic palette.
+- Guided workspace flow for data-center selection, workload entry and validation, weather and energy analysis, scheduling, dashboard KPIs, Before vs After comparison, and results reporting.
 
 ## User preferences
 

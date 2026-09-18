@@ -1,0 +1,1535 @@
+```text
+You are a senior full-stack engineer, product designer, UI/UX designer, data-analytics engineer, and software architect.
+
+Build the following production-quality web application.
+
+============================================================
+PROJECT TITLE
+============================================================
+
+EcoSched
+
+Tagline:
+"Schedule Smarter. Compute Greener."
+
+============================================================
+1. PROJECT TYPE
+============================================================
+
+Build EcoSched as a full-stack web application for carbon-aware cloud workload scheduling, renewable-energy analysis, weather-aware energy analysis, and Before-vs-After sustainability comparison.
+
+This is a functional academic/engineering project, not merely a static UI prototype.
+
+The application must implement the complete flow from data input → analysis → scheduling → comparison → visualization.
+
+============================================================
+2. PRODUCT OVERVIEW
+============================================================
+
+EcoSched is a carbon-aware cloud workload scheduling platform.
+
+The system analyzes cloud workloads together with data-center energy availability, renewable-energy sources, weather conditions, workload deadlines, and energy requirements.
+
+The system should compare:
+
+BEFORE:
+Conventional/baseline workload scheduling
+
+AFTER:
+EcoSched energy- and carbon-aware scheduling
+
+The final application should show whether EcoSched changes:
+- Energy consumption
+- Renewable-energy utilization
+- Grid-energy usage
+- Estimated CO₂ emissions
+- Workload completion/deadline performance
+- Energy efficiency
+
+The application must clearly distinguish real API data, database data, calculated data, simulated data, and demo data.
+
+============================================================
+3. PROBLEM STATEMENT
+============================================================
+
+Cloud data centers consume significant amounts of electricity.
+
+When workloads are scheduled without considering renewable-energy availability, weather conditions, energy sources, and carbon impact, workloads may use more grid electricity than necessary.
+
+EcoSched demonstrates an intelligent scheduling approach that considers available renewable energy and workload constraints while comparing its results with conventional scheduling.
+
+============================================================
+4. SOLUTION
+============================================================
+
+Create a centralized web platform where a user can:
+
+1. Select a company.
+2. Select a data center.
+3. View its energy infrastructure.
+4. Enter workloads manually or upload a workload CSV.
+5. Upload weather CSV data if available.
+6. Retrieve live weather data through a configurable weather API.
+7. Analyze renewable-energy availability.
+8. Analyze energy and carbon-related metrics.
+9. Run baseline scheduling.
+10. Run EcoSched scheduling.
+11. Compare Before vs After.
+12. View dynamic graphs and tables.
+13. Understand the scheduling result.
+14. View/export the final analysis where applicable.
+
+============================================================
+5. PRIMARY USP
+============================================================
+
+EcoSched combines:
+
+CLOUD WORKLOAD SCHEDULING
++
+RENEWABLE ENERGY
++
+WEATHER ANALYSIS
++
+CARBON ANALYSIS
++
+BEFORE VS AFTER COMPARISON
+
+into one integrated sustainability-focused scheduling platform.
+
+============================================================
+6. TARGET USERS
+============================================================
+
+Primary users:
+- Students
+- Faculty
+- Researchers
+- Cloud-computing learners
+- Sustainability researchers
+- Users studying energy-aware cloud scheduling
+
+The application should be simple enough for a classroom demonstration but structured like a real software product.
+
+============================================================
+7. PRIMARY USER JOURNEY
+============================================================
+
+Implement this complete flow:
+
+HOME
+↓
+SELECT COMPANY
+↓
+SELECT DATA CENTER
+↓
+VIEW ENERGY SOURCES
+↓
+ENTER / UPLOAD WORKLOADS
+↓
+VALIDATE AND ANALYZE WORKLOAD DATA
+↓
+WEATHER ANALYSIS
+├── Weather CSV
+└── Live Weather API
+↓
+RENEWABLE ENERGY ANALYSIS
+├── Solar
+├── Wind
+├── Hydro
+└── Grid
+↓
+RUN BASELINE SCHEDULING
+↓
+RUN ECOSCHED SCHEDULING
+↓
+BEFORE VS AFTER COMPARISON
+↓
+GRAPHS + TABLES + KPIs
+↓
+FINAL RESULTS / REPORT
+
+The user should always understand what stage of the process they are currently in.
+
+============================================================
+8. COMPANY AND DATA CENTER DATABASE
+============================================================
+
+Do NOT make company/data-center information dependent only on CSV uploads.
+
+Create a persistent database containing predefined companies and data centers.
+
+Each company should contain:
+- Company ID
+- Company name
+- Description
+- Region/location
+
+Each data center should contain:
+- Data center ID
+- Company ID
+- Data center name
+- Location
+- Region
+- Renewable-energy sources
+- Solar capacity/availability
+- Wind capacity/availability
+- Hydro capacity/availability
+- Grid availability
+- Relevant energy parameters
+- Operational parameters required by the scheduling engine
+
+Provide realistic DEMO/DATABASE records for demonstration.
+
+Clearly label demonstration records as DEMO DATA where appropriate.
+
+Design the database so additional companies and data centers can be added later.
+
+============================================================
+9. ENERGY SOURCES
+============================================================
+
+EcoSched must support:
+
+1. Solar Power
+2. Wind Power
+3. Hydro Power
+4. Grid Electricity
+
+Hydro power is an important additional sustainable energy source and must be represented throughout the application.
+
+Energy-source semantics:
+
+Solar:
+Use yellow/gold visual indicators.
+
+Wind:
+Use blue visual indicators.
+
+Hydro:
+Use light/deep blue visual indicators.
+
+Renewable Energy:
+Use EcoSched green.
+
+Grid:
+Use deep blue/neutral visual indicators.
+
+============================================================
+10. WORKLOAD INPUT
+============================================================
+
+Provide two methods:
+
+A. Manual Workload Entry
+B. CSV Upload
+
+Manual input should support relevant fields such as:
+- Workload ID
+- Workload name
+- CPU requirement
+- Memory requirement
+- Execution duration
+- Energy requirement
+- Arrival time
+- Deadline
+- Priority
+- Data size
+- Other scheduling parameters required by the implementation
+
+Do not invent unnecessary workload parameters.
+
+CSV upload must:
+- Accept CSV files
+- Validate file type
+- Validate required fields
+- Detect missing values
+- Detect invalid values
+- Show a preview before processing
+- Show validation errors clearly
+- Allow the user to correct/re-upload invalid data
+- Process multiple workloads
+
+Do not assume unknown CSV columns are mandatory.
+
+Provide clear documentation/example of the expected CSV structure.
+
+============================================================
+11. WEATHER DATA
+============================================================
+
+Support two weather-data sources:
+
+A. Weather CSV Upload
+B. Live Weather API
+
+Weather CSV should support historical or user-provided weather analysis.
+
+The live weather API should provide current/relevant weather information.
+
+Relevant weather information can include:
+- Temperature
+- Wind speed
+- Cloud conditions
+- Solar-related conditions/irradiance when available
+- Other relevant weather parameters
+
+Weather information should be used to estimate/interpret renewable-energy availability where the required data is available.
+
+Clearly distinguish:
+
+USER-UPLOADED WEATHER DATA
+REAL API WEATHER DATA
+CALCULATED WEATHER/ENERGY VALUES
+SIMULATED WEATHER DATA
+DEMO WEATHER DATA
+
+Never represent simulated/demo weather as real measurements.
+
+============================================================
+12. WEATHER API
+============================================================
+
+Use a configurable live weather API.
+
+API PROVIDER:
+TO BE CONFIGURED
+
+API ENDPOINT:
+TO BE CONFIGURED
+
+API KEY:
+TO BE CONFIGURED
+
+Do NOT invent API credentials.
+
+Do NOT hard-code secrets in frontend code.
+
+Create a clean configuration/service layer so the actual API provider can be added later without restructuring the application.
+
+If the API is unavailable, the application must continue working using clearly labelled DEMO DATA.
+
+============================================================
+13. ENERGY ANALYSIS
+============================================================
+
+For the selected data center, calculate/analyze:
+
+- Available solar energy
+- Available wind energy
+- Available hydro energy
+- Available grid energy
+- Total renewable energy
+- Renewable-energy percentage
+- Grid-energy percentage
+- Workload energy requirement
+- Energy consumption
+- Energy-source utilization
+- Estimated carbon emissions
+
+The calculations must be based on the available project data.
+
+Do not fabricate real-world measurements.
+
+If emission factors are not configured:
+
+EMISSION FACTORS:
+TO BE CONFIGURED
+
+Allow emission factors to be configured in one central location.
+
+============================================================
+14. SCHEDULING
+============================================================
+
+Implement two scheduling scenarios.
+
+------------------------------------------------------------
+BEFORE — BASELINE
+------------------------------------------------------------
+
+Use a conventional baseline scheduling approach for comparison.
+
+The baseline must be clearly labelled as:
+
+"Baseline / Conventional Scheduling"
+
+------------------------------------------------------------
+AFTER — ECOSCHED
+------------------------------------------------------------
+
+Use the EcoSched scheduling approach.
+
+EcoSched should consider relevant factors including:
+- Workload arrival time
+- Execution duration
+- Workload deadline
+- CPU requirements
+- Memory requirements
+- Energy requirements
+- Data-center capacity
+- Renewable-energy availability
+- Solar availability
+- Wind availability
+- Hydro availability
+- Grid availability
+- Carbon/emission considerations
+
+Do not violate mandatory workload constraints.
+
+============================================================
+15. REQUIRED ALGORITHMS
+============================================================
+
+The scheduling engine must preserve the project's specified algorithms.
+
+Required algorithms:
+
+1. Segment Tree
+2. Decreasing Bin-Packing Heuristic
+
+Do NOT replace these with:
+- Generic AI scheduling
+- Sorting only
+- Generic greedy scheduling
+- Another optimization algorithm
+- Black-box AI approximation
+
+The algorithms must be implemented as actual scheduling/data-processing logic.
+
+------------------------------------------------------------
+SEGMENT TREE
+------------------------------------------------------------
+
+Purpose:
+Efficiently represent/query/update relevant scheduling or resource-availability information over time.
+
+Inputs:
+- Time intervals
+- Resource/energy availability
+- Workload scheduling requirements
+- Relevant scheduling constraints
+
+Processing:
+- Build the required tree structure
+- Support efficient interval/range queries
+- Support required updates as scheduling progresses
+- Use the results in the EcoSched scheduling process
+
+Output:
+Efficient availability/resource information used by the scheduler.
+
+------------------------------------------------------------
+DECREASING BIN-PACKING HEURISTIC
+------------------------------------------------------------
+
+Purpose:
+Efficiently assign workloads/resources while considering capacity and energy-related constraints.
+
+Processing:
+- Analyze workload requirements
+- Order workloads according to the defined decreasing heuristic
+- Assign workloads to appropriate scheduling/resource slots
+- Respect capacity and deadline constraints
+- Consider renewable-energy availability
+
+Do not remove mandatory constraints.
+
+============================================================
+16. SCHEDULING ENGINE ARCHITECTURE
+============================================================
+
+Separate scheduling logic from the UI.
+
+Recommended architecture:
+
+Frontend
+↓
+Backend/API
+↓
+Scheduling Engine
+├── Input validation
+├── Baseline scheduler
+├── Segment Tree
+├── Decreasing Bin-Packing Heuristic
+├── Energy analysis
+├── Renewable-energy analysis
+├── Carbon calculation
+└── Result generation
+↓
+Results
+↓
+Database
+↓
+Dashboard / Reports
+
+The scheduling engine must be testable independently from the UI.
+
+============================================================
+17. BEFORE VS AFTER
+============================================================
+
+Create a dedicated application section/page named:
+
+"Before vs After"
+
+This is a major feature.
+
+Compare:
+
+BEFORE:
+Baseline / Conventional Scheduling
+
+AFTER:
+EcoSched Scheduling
+
+Display comparisons for relevant metrics:
+
+- Total energy consumption
+- Renewable-energy utilization
+- Grid-energy usage
+- Estimated CO₂ emissions
+- Workload completion
+- Deadline compliance
+- Renewable-energy percentage
+- Energy efficiency
+
+Only display metrics that can actually be calculated from the available data.
+
+Do not fabricate improvements.
+
+============================================================
+18. BEFORE VS AFTER GRAPHS
+============================================================
+
+Create dynamic charts using actual calculated results.
+
+Required/appropriate charts:
+
+1. Energy Consumption — Before vs After
+2. CO₂ Emissions — Before vs After
+3. Renewable Energy Utilization — Before vs After
+4. Grid Energy Usage — Before vs After
+5. Workload/Deadline Performance
+6. Energy-source contribution
+
+Every chart must have:
+- Meaningful title
+- Clearly labelled axes
+- Units
+- Legend where required
+- Actual data source
+- Tooltips
+- Responsive layout
+
+Chart colors must follow the EcoSched brand.
+
+Suggested semantic colors:
+
+Solar → Yellow
+Wind → Blue
+Hydro → Light Blue
+Renewable → Eco Green
+Grid → Deep Blue/Neutral
+Before → Gray/Neutral
+After → EcoSched Green
+
+Do not create decorative charts with meaningless data.
+
+============================================================
+19. DASHBOARD
+============================================================
+
+Create a professional EcoSched dashboard.
+
+Include KPI cards such as:
+
+- Total Workloads
+- Total Energy Consumption
+- Renewable Energy Used
+- Grid Energy Used
+- Renewable Energy %
+- Estimated CO₂ Emissions
+- Deadline Compliance
+
+Dashboard values must update according to selected data center, workload data, weather data, and scheduling results.
+
+Include:
+- Energy overview
+- Renewable-energy overview
+- Carbon overview
+- Workload overview
+- Scheduling status
+- Before/After summary
+
+============================================================
+20. RESULTS PAGE
+============================================================
+
+After scheduling, display:
+
+A. Scheduling Summary
+B. Workload Schedule
+C. Energy Analysis
+D. Renewable-Energy Analysis
+E. Carbon Analysis
+F. Before vs After Comparison
+G. Charts
+H. Detailed Tables
+I. Key Findings
+J. Relevant recommendations/interpretations based strictly on calculated results
+
+For each workload, show relevant information such as:
+- Workload ID
+- Scheduled time
+- Duration
+- Energy source
+- Energy consumption
+- Deadline
+- Completion status
+
+============================================================
+21. EXPLAINABILITY
+============================================================
+
+The user should be able to understand why EcoSched produced a particular result.
+
+For important scheduling decisions, provide an explanation such as:
+
+- Renewable energy was available during this time period.
+- The workload had a particular deadline.
+- Available capacity was sufficient/insufficient.
+- The scheduler selected a particular energy/time slot.
+- Grid energy was used because renewable capacity was insufficient.
+
+Only provide explanations supported by the actual calculation.
+
+Do not invent reasons.
+
+============================================================
+22. PAGES
+============================================================
+
+Create the following pages:
+
+1. HOME
+2. DATA CENTER
+3. WORKLOAD INPUT
+4. WEATHER & ENERGY
+5. SCHEDULING
+6. DASHBOARD
+7. BEFORE VS AFTER
+8. RESULTS / REPORT
+
+Do not add unnecessary pages.
+
+============================================================
+23. HOME PAGE
+============================================================
+
+The homepage should immediately communicate:
+
+EcoSched
+"Schedule Smarter. Compute Greener."
+
+Sections:
+
+1. Navigation
+2. Hero
+3. Problem
+4. EcoSched Solution
+5. How It Works
+6. Renewable Energy Sources
+7. Key Features
+8. Before vs After Preview
+9. Dashboard/Product Preview
+10. Call to Action
+11. Footer
+
+Primary CTA:
+
+"Start Analysis"
+
+Secondary CTA:
+
+"Explore EcoSched"
+
+============================================================
+24. DATA CENTER PAGE
+============================================================
+
+Provide:
+
+- Company selector
+- Data-center selector
+- Location
+- Energy-source cards
+- Solar availability
+- Wind availability
+- Hydro availability
+- Grid availability
+- Data-center information
+
+Use database data.
+
+Provide a clear selected-data-center summary.
+
+============================================================
+25. WORKLOAD PAGE
+============================================================
+
+Provide:
+
+- Manual workload form
+- CSV upload
+- CSV validation
+- CSV preview
+- Workload table
+- Edit controls
+- Delete controls
+- Clear/reset controls
+- Continue to Analysis button
+
+Show validation errors clearly.
+
+============================================================
+26. WEATHER & ENERGY PAGE
+============================================================
+
+Show:
+
+Weather:
+- Current weather/API status
+- Weather data
+- Weather CSV upload
+- Data source indicator
+
+Energy:
+- Solar
+- Wind
+- Hydro
+- Grid
+- Renewable total
+- Energy availability
+
+Clearly display whether information comes from:
+- Database
+- User upload
+- Live API
+- Calculation
+- Demo data
+
+============================================================
+27. SCHEDULING PAGE
+============================================================
+
+Show:
+
+- Workload summary
+- Data-center summary
+- Energy availability
+- Scheduling parameters where user modification is appropriate
+- Baseline scheduling button
+- EcoSched scheduling button
+- Processing status
+- Scheduling progress
+- Final schedule preview
+
+Do not expose unnecessary technical complexity to normal users.
+
+Provide an optional "Algorithm Details" section for academic demonstration.
+
+============================================================
+28. ALGORITHM DETAILS
+============================================================
+
+Provide an expandable academic/technical section explaining:
+
+- Segment Tree
+- Decreasing Bin-Packing Heuristic
+- Why each is used
+- Inputs
+- Processing
+- Outputs
+- Scheduling role
+
+This section is useful for project presentation/viva.
+
+Do not replace the actual implementation with a visual explanation.
+
+============================================================
+29. UI / UX BRAND SYSTEM
+============================================================
+
+Use the uploaded EcoSched logo as the primary visual identity reference.
+
+The entire website must visually belong to the EcoSched brand.
+
+Do NOT use a generic green SaaS template.
+
+The design must combine:
+
+SUSTAINABILITY
++
+CLOUD COMPUTING
++
+DATA ANALYTICS
++
+RENEWABLE ENERGY
+
+------------------------------------------------------------
+COLOR PALETTE
+------------------------------------------------------------
+
+Use the logo's visual color language:
+
+Eco Green:
+Primary sustainability color.
+
+Deep Green:
+Secondary environmental accent.
+
+Technology Blue:
+Primary technology/interaction color.
+
+Deep Blue:
+Strong technology/data-center accent.
+
+Light Blue:
+Weather/hydro/information accent.
+
+Yellow:
+Solar/energy indicator.
+
+White:
+Primary background/card color.
+
+Soft Neutral Gray:
+Secondary backgrounds, borders, baseline data, and supporting elements.
+
+Semantic usage:
+
+Green = Renewable / Sustainable
+Blue = Cloud / Computing / Technology
+Yellow = Solar
+Light Blue = Hydro / Weather
+Gray = Baseline / Neutral
+Red = Errors / Critical warnings only
+
+Use balanced green and blue.
+
+Do not make the entire interface green.
+
+------------------------------------------------------------
+LOGO
+------------------------------------------------------------
+
+Use the uploaded EcoSched logo.
+
+Use it in:
+- Navbar
+- Homepage
+- Dashboard/sidebar
+- Relevant report headers
+
+Do not stretch, distort, recolor, or modify the logo.
+
+============================================================
+30. VISUAL STYLE
+============================================================
+
+The website should feel:
+
+- Modern
+- Clean
+- Technical
+- Sustainable
+- Data-driven
+- Professional
+- Reliable
+- Intelligent
+
+Avoid:
+- Excessive gradients
+- Excessive glowing effects
+- Excessive animations
+- Overly futuristic interfaces
+- Cluttered dashboards
+- Decorative elements that reduce usability
+
+============================================================
+31. COMPONENT DESIGN
+============================================================
+
+Use reusable components for:
+
+- Navbar
+- Sidebar
+- Buttons
+- Input fields
+- Select controls
+- Upload component
+- KPI cards
+- Energy-source cards
+- Data-center cards
+- Workload table
+- Charts
+- Comparison cards
+- Progress indicators
+- Status badges
+- Modals
+- Tooltips
+- Toast notifications
+- Loading states
+- Error states
+- Empty states
+
+Do not over-engineer.
+
+============================================================
+32. BUTTON DESIGN
+============================================================
+
+Primary buttons:
+EcoSched green/blue brand treatment.
+
+Secondary buttons:
+White/light background with brand-colored border/text.
+
+Danger:
+Red only when necessary.
+
+Important CTA:
+"Start Analysis"
+
+============================================================
+33. CHART DESIGN
+============================================================
+
+Charts must use the EcoSched palette.
+
+Do not use random chart colors.
+
+Every chart must have a clear purpose.
+
+Use:
+- Bar charts for Before vs After
+- Line charts for time-based energy/weather trends
+- Donut/pie charts only when appropriate for energy-source composition
+- Area/line visualizations when showing availability over time
+
+Charts must be responsive.
+
+============================================================
+34. TABLE DESIGN
+============================================================
+
+Tables must be:
+- Readable
+- Responsive
+- Searchable where useful
+- Sortable where useful
+- Clearly labelled
+- Properly aligned
+
+On mobile, provide horizontal scrolling or an appropriate responsive alternative.
+
+============================================================
+35. RESPONSIVE DESIGN
+============================================================
+
+Support:
+
+Desktop
+Laptop
+Tablet
+Mobile
+
+Adapt:
+- Navigation
+- Sidebar
+- Tables
+- Charts
+- Cards
+- Forms
+- KPI sections
+- Before/After comparison
+
+Do not simply shrink the desktop UI.
+
+============================================================
+36. ACCESSIBILITY
+============================================================
+
+Implement:
+
+- Semantic HTML
+- Keyboard navigation
+- Visible focus states
+- Proper form labels
+- Accessible buttons
+- Accessible tables
+- Appropriate ARIA
+- Sufficient contrast
+- Screen-reader-friendly structure
+
+Do not rely on color alone to communicate status.
+
+============================================================
+37. LOADING STATES
+============================================================
+
+Provide loading states for:
+
+- Database loading
+- Company/data-center loading
+- CSV processing
+- Weather API request
+- Weather analysis
+- Energy analysis
+- Scheduling
+- Chart calculation
+- Results generation
+
+Use meaningful progress/status messages.
+
+============================================================
+38. ERROR STATES
+============================================================
+
+Handle:
+
+- Invalid CSV
+- Missing CSV columns
+- Invalid workload values
+- Empty workload file
+- Invalid weather file
+- Weather API failure
+- Network failure
+- API timeout
+- Database failure
+- Scheduling failure
+- Missing energy data
+- Unexpected API response
+
+Always provide a clear recovery action where possible.
+
+============================================================
+39. EMPTY STATES
+============================================================
+
+Provide useful empty states for:
+
+- No company selected
+- No data center selected
+- No workloads
+- No weather data
+- No scheduling result
+- No comparison result
+
+Tell the user what action to take next.
+
+============================================================
+40. DATABASE ARCHITECTURE
+============================================================
+
+Use a relational database.
+
+RECOMMENDED:
+Supabase PostgreSQL
+
+Possible entities:
+
+companies
+data_centers
+energy_sources
+workloads
+weather_data
+scheduling_runs
+scheduling_results
+energy_analysis
+comparison_results
+
+Create appropriate relationships.
+
+Do not store unnecessary duplicate information.
+
+============================================================
+41. BACKEND ARCHITECTURE
+============================================================
+
+RECOMMENDED:
+
+Node.js + TypeScript backend/API layer.
+
+Backend responsibilities:
+
+- Database operations
+- Weather API communication
+- Secure API-key handling
+- Workload processing
+- Scheduling-engine communication
+- Energy calculations
+- Carbon calculations
+- Result generation
+
+Never expose secrets in frontend code.
+
+============================================================
+42. SCHEDULING ENGINE
+============================================================
+
+If necessary, implement the scheduling engine as a separate Python service/module because Python is suitable for algorithmic and numerical processing.
+
+RECOMMENDED architecture:
+
+React/TypeScript frontend
+↓
+Node.js backend
+↓
+Python scheduling/analysis engine
+↓
+Results
+↓
+Node.js backend
+↓
+Database
+↓
+React dashboard
+
+If a separate Python service unnecessarily complicates deployment, implement the algorithms in TypeScript while preserving the exact required algorithmic behavior.
+
+============================================================
+43. FRONTEND STACK
+============================================================
+
+RECOMMENDED:
+
+Frontend:
+React + TypeScript
+
+Styling:
+Tailwind CSS
+
+UI Components:
+shadcn/ui
+
+Charts:
+Recharts
+
+CSV Processing:
+Papa Parse
+
+Icons:
+Lucide Icons or equivalent clean icon library
+
+============================================================
+44. DATABASE
+============================================================
+
+RECOMMENDED:
+
+Supabase PostgreSQL
+
+Use it for:
+- Companies
+- Data centers
+- Energy information
+- Workloads
+- Weather records where persistence is required
+- Scheduling results
+- Analysis results
+
+============================================================
+45. AUTHENTICATION
+============================================================
+
+Authentication is NOT mandatory for the current academic-project scope.
+
+Do not force users to create accounts just to demonstrate the project.
+
+If authentication is later required, structure the application so it can be added cleanly.
+
+============================================================
+46. AI
+============================================================
+
+AI is NOT the core scheduling engine.
+
+Do not replace the required scheduling algorithms with AI.
+
+Do not add unnecessary AI functionality.
+
+If AI is added later for explanation or natural-language reporting, keep it separate from the deterministic scheduling engine.
+
+AI PROVIDER:
+TO BE CONFIGURED
+
+============================================================
+47. DATA CLASSIFICATION
+============================================================
+
+The UI must clearly distinguish:
+
+DATABASE DATA
+USER-PROVIDED DATA
+REAL API DATA
+CALCULATED DATA
+SIMULATED DATA
+DEMO DATA
+
+Use visible labels/badges where appropriate.
+
+Never present simulated/demo information as real-world measurements.
+
+============================================================
+48. DEMO MODE
+============================================================
+
+The application must work without external API credentials during demonstration.
+
+Create realistic demo data for:
+
+- Companies
+- Data centers
+- Workloads
+- Weather
+- Solar
+- Wind
+- Hydro
+- Grid
+- Scheduling results
+
+Clearly label it:
+
+"DEMO DATA"
+
+Provide a clear way to switch to real/configured data.
+
+Keep demo services separate from production services.
+
+============================================================
+49. SECURITY
+============================================================
+
+Implement:
+
+- No API secrets in frontend
+- Environment variables for secrets
+- Input validation
+- CSV validation
+- Secure API communication
+- Database security
+- Appropriate authorization for protected operations
+- Safe file processing
+- Sanitization where required
+
+Do not expose:
+- API keys
+- Database credentials
+- Server secrets
+
+============================================================
+50. PERFORMANCE
+============================================================
+
+Prioritize:
+
+- Fast initial loading
+- Efficient React rendering
+- Efficient state management
+- Minimal unnecessary API calls
+- Efficient CSV processing
+- Efficient scheduling calculations
+- Lazy loading where appropriate
+- Responsive interactions
+
+The Segment Tree should be implemented where it provides the required efficient range-query/update behavior.
+
+============================================================
+51. SEO
+============================================================
+
+For the public homepage implement:
+
+- Page title
+- Meta description
+- Semantic headings
+- Open Graph metadata where appropriate
+
+Do not add unnecessary SEO requirements to private application sections.
+
+============================================================
+52. REPORT / EXPORT
+============================================================
+
+Provide a report-oriented results view.
+
+Where practical, allow users to export/download analysis results.
+
+The report should contain:
+
+- Selected company
+- Selected data center
+- Workload summary
+- Energy summary
+- Renewable-energy summary
+- Carbon summary
+- Before vs After metrics
+- Charts
+- Scheduling summary
+- Data-source indicators
+
+Do not claim measurements are real unless they originate from configured real data/API sources.
+
+============================================================
+53. DATA SOURCE INDICATORS
+============================================================
+
+Every major analysis section should indicate the source.
+
+Examples:
+
+[DATABASE]
+[DEMO DATA]
+[CSV UPLOAD]
+[LIVE API]
+[CALCULATED]
+
+This is important for academic transparency.
+
+============================================================
+54. CONFIGURATION
+============================================================
+
+Create centralized configuration points for:
+
+- Weather API provider
+- Weather API endpoint
+- Weather API key
+- Emission factors
+- Database configuration
+- Scheduling parameters
+- Energy parameters
+
+Unknown values must remain:
+
+TO BE CONFIGURED
+
+Never fabricate credentials or endpoints.
+
+============================================================
+55. PROJECT STRUCTURE
+============================================================
+
+Use a logical maintainable structure.
+
+Recommended:
+
+src/
+├── components/
+├── pages/
+├── layouts/
+├── services/
+├── api/
+├── hooks/
+├── utils/
+├── types/
+├── data/
+├── charts/
+├── scheduling/
+├── energy/
+├── weather/
+└── assets/
+
+Backend:
+
+server/
+├── routes/
+├── services/
+├── database/
+├── controllers/
+├── validation/
+└── config/
+
+Scheduling engine if separated:
+
+scheduler/
+├── baseline/
+├── segment-tree/
+├── bin-packing/
+├── energy-analysis/
+├── carbon-analysis/
+└── models/
+
+Only create folders that are actually needed.
+
+============================================================
+56. DEPLOYMENT
+============================================================
+
+RECOMMENDED:
+
+Frontend:
+Vercel
+
+Database:
+Supabase
+
+Backend:
+Vercel-compatible serverless/API architecture or another deployment compatible with the selected implementation.
+
+If a separate Python scheduling service is used, deploy it on a suitable Python-compatible platform.
+
+The final deployment must be practical for a student project.
+
+============================================================
+57. DO NOT BUILD
+============================================================
+
+Do NOT:
+
+- Add unrelated features
+- Add unnecessary authentication
+- Add payment systems
+- Add unnecessary user accounts
+- Invent APIs
+- Invent API credentials
+- Invent database credentials
+- Invent real-world measurements
+- Invent company-specific operational claims
+- Present demo data as real
+- Present simulated data as real
+- Replace Segment Tree
+- Replace Decreasing Bin-Packing Heuristic
+- Replace deterministic scheduling with AI
+- Add meaningless charts
+- Add decorative dashboards with fake KPIs
+- Create unnecessary pages
+- Overcomplicate the architecture
+- Expose secrets
+- Prioritize animations over functionality
+
+============================================================
+58. IMPLEMENTATION PRIORITY
+============================================================
+
+Implement in this order:
+
+1. Database structure
+2. Company/data-center selection
+3. Workload input and CSV processing
+4. Weather data flow
+5. Energy-source data
+6. Energy analysis
+7. Baseline scheduling
+8. Segment Tree
+9. Decreasing Bin-Packing Heuristic
+10. EcoSched scheduling
+11. Results
+12. Before vs After calculations
+13. Dynamic graphs
+14. Dashboard
+15. Error/loading/empty states
+16. Responsive design
+17. Accessibility
+18. Performance
+19. Visual polish
+20. Deployment configuration
+
+Functional correctness is more important than decorative design.
+
+============================================================
+59. ACCEPTANCE CRITERIA
+============================================================
+
+The application is complete only when:
+
+[ ] EcoSched branding is implemented.
+[ ] Uploaded EcoSched logo is integrated correctly.
+[ ] Logo-inspired green/blue/yellow color system is used.
+[ ] Company database works.
+[ ] Data-center database works.
+[ ] Solar energy is supported.
+[ ] Wind energy is supported.
+[ ] Hydro energy is supported.
+[ ] Grid energy is supported.
+[ ] Manual workload input works.
+[ ] Workload CSV upload works.
+[ ] CSV validation works.
+[ ] Weather CSV upload works.
+[ ] Live weather API has a clean configuration point.
+[ ] API secrets are not exposed.
+[ ] Demo data works without external credentials.
+[ ] Data sources are clearly labelled.
+[ ] Energy analysis works.
+[ ] Carbon calculations work using configured/calculated factors.
+[ ] Baseline scheduling works.
+[ ] Segment Tree is implemented.
+[ ] Decreasing Bin-Packing Heuristic is implemented.
+[ ] EcoSched scheduling works.
+[ ] Workload constraints are respected.
+[ ] Results are generated.
+[ ] Before vs After comparison works.
+[ ] Before vs After graphs use calculated data.
+[ ] Dashboard KPIs update dynamically.
+[ ] Results are understandable.
+[ ] Loading states work.
+[ ] Error states work.
+[ ] Empty states work.
+[ ] Responsive layouts work.
+[ ] Accessibility requirements are addressed.
+[ ] No unrelated functionality is added.
+[ ] No fabricated APIs or credentials are used.
+[ ] No demo data is presented as real data.
+
+============================================================
+60. FINAL DEVELOPMENT INSTRUCTION
+============================================================
+
+Build EcoSched as a complete, functional, professional web application according to this specification.
+
+Do not treat this as a simple landing-page project.
+
+The main purpose is to demonstrate the complete working pipeline:
+
+DATA
+→ ANALYSIS
+→ ENERGY AWARENESS
+→ WEATHER AWARENESS
+→ BASELINE SCHEDULING
+→ ECOSCHED SCHEDULING
+→ BEFORE VS AFTER
+→ CARBON/ENERGY ANALYSIS
+→ VISUALIZATION
+→ REPORT
+
+Preserve the required scheduling algorithms.
+
+Do not invent missing API credentials, endpoints, emission factors, or production data.
+
+Whenever something is marked "TO BE CONFIGURED", create a clean configuration point or placeholder.
+
+Use clearly labelled demo data whenever real data is unavailable.
+
+The application should feel like a purpose-built sustainability and cloud-computing platform, not a generic dashboard template.
+
+The uploaded EcoSched logo is the primary branding reference. Match the website's visual identity to the logo using its green, blue, yellow, white, and neutral visual language.
+
+Prioritize:
+
+1. Functional correctness
+2. Correct data flow
+3. Accurate scheduling logic
+4. Correct algorithm implementation
+5. Meaningful energy/carbon calculations
+6. Clear Before vs After comparison
+7. Usable UX
+8. Responsive design
+9. Accessibility
+10. Security
+11. Performance
+12. Visual quality
+
+Start by creating the application architecture and database structure, then implement the core data flow and scheduling engine before adding visual polish.
+```

@@ -1,0 +1,1 @@
+- [Generated client DOM iterable types](generated-client-dom-iterable.md) — Orval's Headers.entries helper requires dom.iterable in the shared API client compiler libs.

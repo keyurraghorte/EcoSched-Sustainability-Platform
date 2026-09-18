@@ -10,6 +10,12 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: catalog
+    description: Demo company and data-center catalog
+  - name: analysis
+    description: Workload, weather, and scheduling analysis
+  - name: dashboard
+    description: Dashboard and report summaries
 paths:
   /healthz:
     get:
@@ -24,6 +30,132 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /companies:
+    get:
+      operationId: listCompanies
+      tags: [catalog]
+      summary: List available companies
+      responses:
+        "200":
+          description: Companies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Company"
+  /companies/{companyId}/data-centers:
+    get:
+      operationId: listDataCenters
+      tags: [catalog]
+      summary: List data centers for a company
+      parameters:
+        - name: companyId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Data centers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DataCenter"
+  /data-centers/{dataCenterId}:
+    get:
+      operationId: getDataCenter
+      tags: [catalog]
+      summary: Get a data center
+      parameters:
+        - name: dataCenterId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Data center
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataCenter"
+        "404":
+          description: Data center not found
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get a dashboard summary for a data center
+      parameters:
+        - name: dataCenterId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+  /analysis/workloads/validate:
+    post:
+      operationId: validateWorkloads
+      tags: [analysis]
+      summary: Validate workload rows
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkloadValidationInput"
+      responses:
+        "200":
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkloadValidationResult"
+  /analysis/weather:
+    post:
+      operationId: getWeatherAnalysis
+      tags: [analysis]
+      summary: Get weather context and renewable availability
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WeatherAnalysisInput"
+      responses:
+        "200":
+          description: Weather and energy analysis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeatherAnalysis"
+  /analysis/scheduling:
+    post:
+      operationId: runScheduling
+      tags: [analysis]
+      summary: Run baseline or EcoSched scheduling
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SchedulingInput"
+      responses:
+        "200":
+          description: Scheduling result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SchedulingResult"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +165,196 @@ components:
           type: string
       required:
         - status
+    Company:
+      type: object
+      required: [id, name, description, region, dataSource]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        region: { type: string }
+        dataSource: { type: string }
+    EnergySource:
+      type: object
+      required: [name, type, availableKwh, capacityKwh, percentage, colorKey]
+      properties:
+        name: { type: string }
+        type: { type: string }
+        availableKwh: { type: number }
+        capacityKwh: { type: number }
+        percentage: { type: number }
+        colorKey: { type: string }
+    DataCenter:
+      type: object
+      required: [id, companyId, name, location, region, status, energySources, totalRenewableKwh, gridAvailabilityKwh, dataSource]
+      properties:
+        id: { type: string }
+        companyId: { type: string }
+        name: { type: string }
+        location: { type: string }
+        region: { type: string }
+        status: { type: string }
+        energySources:
+          type: array
+          items: { $ref: "#/components/schemas/EnergySource" }
+        totalRenewableKwh: { type: number }
+        gridAvailabilityKwh: { type: number }
+        dataSource: { type: string }
+        efficiencyScore: { type: number }
+    Workload:
+      type: object
+      required: [id, name, cpu, memoryGb, durationMinutes, energyKwh, arrival, deadline, priority, dataSizeGb]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        cpu: { type: number }
+        memoryGb: { type: number }
+        durationMinutes: { type: number }
+        energyKwh: { type: number }
+        arrival: { type: string }
+        deadline: { type: string }
+        priority: { type: string }
+        dataSizeGb: { type: number }
+    WorkloadValidationInput:
+      type: object
+      required: [workloads]
+      properties:
+        workloads:
+          type: array
+          items: { $ref: "#/components/schemas/Workload" }
+    ValidationIssue:
+      type: object
+      required: [row, field, message, severity]
+      properties:
+        row: { type: integer }
+        field: { type: string }
+        message: { type: string }
+        severity: { type: string }
+    WorkloadValidationResult:
+      type: object
+      required: [valid, workloadCount, workloads, issues, dataSource]
+      properties:
+        valid: { type: boolean }
+        workloadCount: { type: integer }
+        workloads:
+          type: array
+          items: { $ref: "#/components/schemas/Workload" }
+        issues:
+          type: array
+          items: { $ref: "#/components/schemas/ValidationIssue" }
+        dataSource: { type: string }
+    WeatherAnalysisInput:
+      type: object
+      required: [dataCenterId, source]
+      properties:
+        dataCenterId: { type: string }
+        source: { type: string }
+    WeatherAnalysis:
+      type: object
+      required: [source, sourceLabel, temperatureC, windSpeedKph, cloudCoverPct, solarIrradianceWm2, renewableForecast, energySources]
+      properties:
+        source: { type: string }
+        sourceLabel: { type: string }
+        temperatureC: { type: number }
+        windSpeedKph: { type: number }
+        cloudCoverPct: { type: number }
+        solarIrradianceWm2: { type: number }
+        renewableForecast:
+          type: array
+          items: { type: number }
+        energySources:
+          type: array
+          items: { $ref: "#/components/schemas/EnergySource" }
+    SchedulingInput:
+      type: object
+      required: [dataCenterId, mode, workloads]
+      properties:
+        dataCenterId: { type: string }
+        mode: { type: string }
+        workloads:
+          type: array
+          items: { $ref: "#/components/schemas/Workload" }
+    ScheduledWorkload:
+      type: object
+      required: [workloadId, name, scheduledTime, durationMinutes, energySource, energyKwh, deadline, completionStatus, explanation]
+      properties:
+        workloadId: { type: string }
+        name: { type: string }
+        scheduledTime: { type: string }
+        durationMinutes: { type: number }
+        energySource: { type: string }
+        energyKwh: { type: number }
+        deadline: { type: string }
+        completionStatus: { type: string }
+        explanation: { type: string }
+    ComparisonMetric:
+      type: object
+      required: [label, unit, before, after, changePct, direction]
+      properties:
+        label: { type: string }
+        unit: { type: string }
+        before: { type: number }
+        after: { type: number }
+        changePct: { type: number }
+        direction: { type: string }
+    SchedulingResult:
+      type: object
+      required: [runId, mode, status, algorithm, summary, workloads, metrics, sourceLabels]
+      properties:
+        runId: { type: string }
+        mode: { type: string }
+        status: { type: string }
+        algorithm:
+          type: object
+          required: [segmentTree, binPacking]
+          properties:
+            segmentTree: { type: string }
+            binPacking: { type: string }
+        summary:
+          type: object
+          required: [totalEnergyKwh, renewableEnergyKwh, gridEnergyKwh, co2Kg, completedWorkloads, deadlineCompliancePct, renewablePct]
+          properties:
+            totalEnergyKwh: { type: number }
+            renewableEnergyKwh: { type: number }
+            gridEnergyKwh: { type: number }
+            co2Kg: { type: number }
+            completedWorkloads: { type: integer }
+            deadlineCompliancePct: { type: number }
+            renewablePct: { type: number }
+        workloads:
+          type: array
+          items: { $ref: "#/components/schemas/ScheduledWorkload" }
+        metrics:
+          type: array
+          items: { $ref: "#/components/schemas/ComparisonMetric" }
+        sourceLabels:
+          type: array
+          items: { type: string }
+    DashboardSummary:
+      type: object
+      required: [dataCenterId, dataCenterName, totalWorkloads, totalEnergyKwh, renewableEnergyKwh, gridEnergyKwh, renewablePct, co2Kg, deadlineCompliancePct, energyTrend, sourceLabels]
+      properties:
+        dataCenterId: { type: string }
+        dataCenterName: { type: string }
+        totalWorkloads: { type: integer }
+        totalEnergyKwh: { type: number }
+        renewableEnergyKwh: { type: number }
+        gridEnergyKwh: { type: number }
+        renewablePct: { type: number }
+        co2Kg: { type: number }
+        deadlineCompliancePct: { type: number }
+        energyTrend:
+          type: array
+          items:
+            type: object
+            required: [time, solar, wind, hydro, grid]
+            properties:
+              time: { type: string }
+              solar: { type: number }
+              wind: { type: number }
+              hydro: { type: number }
+              grid: { type: number }
+        sourceLabels:
+          type: array
+          items: { type: string }
 

@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "EcoSched"
+description = "A carbon-aware cloud workload scheduling platform for exploring renewable energy, weather context, and Before vs After sustainability results."
+version = "1.0.0"
+id = "artifacts/ecosched"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19549
+
+[services.development]
+run = "pnpm --filter @workspace/ecosched run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/ecosched", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/ecosched/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19549"
+BASE_PATH = "/"
