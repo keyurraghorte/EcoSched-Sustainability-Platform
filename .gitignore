@@ -30,12 +30,20 @@ node_modules
 # misc
 /.sass-cache
 /connect.lock
+/\.env
+/\.env.*
+!/.env.example
 /coverage
 /libpeerconnection.log
 npm-debug.log
 yarn-error.log
 testem.log
 /typings
+
+# Environment files in workspace packages
+**/.env
+**/.env.*
+!**/.env.example
 
 # System Files
 .DS_Store

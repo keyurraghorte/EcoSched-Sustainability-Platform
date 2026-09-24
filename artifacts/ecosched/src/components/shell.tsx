@@ -1,7 +1,8 @@
 import { Link, useLocation } from 'wouter';
 import { useMemo, useState, createContext, useContext } from 'react';
 import { Activity, BarChart3, CloudSun, Database, FileSearch, LayoutDashboard, Menu, Play, Server, SlidersHorizontal, X, Zap } from 'lucide-react';
-import { getListDataCentersQueryKey, useListCompanies, useListDataCenters } from '@workspace/api-client-react';
+import { useQuery } from '@tanstack/react-query';
+import { getCompanies, getDataCentersByCompany } from '@/services/catalog';
 import type { Company, DataCenter, Workload, SchedulingResult } from '@workspace/api-client-react';
 import logo from '@assets/ecosched-logo.png';
 
@@ -26,8 +27,11 @@ const nav = [
 ];
 
 export function Brand({ compact = false }: { compact?: boolean }) {
-  return <Link href="/" className={compact ? 'flex items-center gap-2' : 'flex items-center gap-3'} data-testid="link-brand">
-    <img src={logo} alt="EcoSched" className={compact ? 'h-9 w-9 object-contain' : 'h-12 w-12 object-contain'} />
+  return <Link href="/" className={compact ? 'flex shrink-0 items-center gap-2.5' : 'flex items-center gap-3'} data-testid="link-brand">
+    <span className={compact ? 'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-sky-100 bg-white p-1 shadow-sm' : undefined}>
+      <img src={logo} alt="EcoSched" className={compact ? 'h-full w-full object-contain' : 'h-12 w-12 object-contain'} />
+    </span>
+    {compact && <span className="display text-base font-bold tracking-tight text-[#123b57]">Eco<span className="text-[#1683ac]">Sched</span></span>}
     {!compact && <span className="display text-lg font-bold tracking-tight text-white">Eco<span className="text-lime-300">Sched</span></span>}
   </Link>;
 }
@@ -35,12 +39,16 @@ export function Brand({ compact = false }: { compact?: boolean }) {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const companiesQuery = useListCompanies();
+  const companiesQuery = useQuery({ queryKey: ['supabase', 'companies'], queryFn: getCompanies });
   const companies = companiesQuery.data ?? [];
   const [companyId, setCompanyIdState] = useState(() => localStorage.getItem('ecosched-company') ?? '');
   const company = companies.find(c => c.id === companyId) ?? companies[0];
   const actualCompanyId = company?.id ?? companyId;
-  const dcQuery = useListDataCenters(actualCompanyId, { query: { enabled: Boolean(actualCompanyId), queryKey: getListDataCentersQueryKey(actualCompanyId) } });
+  const dcQuery = useQuery({
+    queryKey: ['supabase', 'data-centers', actualCompanyId],
+    queryFn: () => getDataCentersByCompany(actualCompanyId),
+    enabled: Boolean(actualCompanyId),
+  });
   const dataCenters = dcQuery.data ?? [];
   const [dataCenterId, setDataCenterIdState] = useState(() => localStorage.getItem('ecosched-dc') ?? '');
   const dataCenter = dataCenters.find(dc => dc.id === dataCenterId) ?? dataCenters[0];
@@ -57,8 +65,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex items-center justify-between px-2 pb-7"><Brand /><button className="mobile-only text-white/70" onClick={() => setMobileOpen(false)} aria-label="Close navigation" data-testid="button-close-navigation"><X size={19} /></button></div>
         <div className="mb-5 rounded-xl border border-white/10 bg-white/5 px-3 py-3">
           <p className="mono mb-2 text-[10px] uppercase tracking-[.16em] text-white/45">Active workspace</p>
-          <select value={company?.id ?? ''} onChange={e => setCompanyId(e.target.value)} className="mb-2 w-full bg-transparent text-sm font-semibold text-white outline-none" data-testid="select-company"><option className="text-slate-900" value="">Choose company</option>{companies.map(c => <option className="text-slate-900" key={c.id} value={c.id}>{c.name}</option>)}</select>
-          <select value={dataCenter?.id ?? ''} onChange={e => setDataCenterId(e.target.value)} className="w-full bg-transparent text-xs text-white/65 outline-none" data-testid="select-data-center"><option className="text-slate-900" value="">Choose data center</option>{dataCenters.map(dc => <option className="text-slate-900" key={dc.id} value={dc.id}>{dc.name}</option>)}</select>
+          <select value={company?.id ?? ''} onChange={e => setCompanyId(e.target.value)} className="mb-2 w-full bg-transparent text-sm font-semibold text-white outline-none" data-testid="select-company"><option className="text-slate-900" value="">{companiesQuery.isLoading ? 'Loading companies...' : companiesQuery.isError ? 'Unable to load companies' : companies.length ? 'Choose company' : 'No companies configured'}</option>{companies.map(c => <option className="text-slate-900" key={c.id} value={c.id}>{c.name}</option>)}</select>
+          <select value={dataCenter?.id ?? ''} onChange={e => setDataCenterId(e.target.value)} className="w-full bg-transparent text-xs text-white/65 outline-none" data-testid="select-data-center" disabled={!actualCompanyId || dcQuery.isLoading}><option className="text-slate-900" value="">{dcQuery.isLoading ? 'Loading data centers...' : dcQuery.isError ? 'Unable to load data centers' : dataCenters.length ? 'Choose data center' : 'No data centers configured'}</option>{dataCenters.map(dc => <option className="text-slate-900" key={dc.id} value={dc.id}>{dc.name}</option>)}</select>
+          {companiesQuery.isError && <button type="button" onClick={() => void companiesQuery.refetch()} className="mt-2 text-[10px] font-semibold text-lime-300 hover:text-white" data-testid="button-retry-companies">Retry company loading</button>}
+          {dcQuery.isError && <button type="button" onClick={() => void dcQuery.refetch()} className="mt-2 text-[10px] font-semibold text-lime-300 hover:text-white" data-testid="button-retry-data-centers">Retry data-center loading</button>}
         </div>
         <nav className="space-y-1" aria-label="Main navigation">{nav.map(item => { const Icon = item.icon; const active = location === item.href; return <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)} className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] transition-colors ${active ? 'bg-lime-300 font-bold text-[hsl(var(--sidebar))]' : 'text-white/65 hover:bg-white/8 hover:text-white'}`} data-testid={`link-nav-${item.href.slice(1)}`}><Icon size={17} strokeWidth={active ? 2.5 : 1.8} /><span>{item.label}</span>{active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[hsl(var(--sidebar))]" />}</Link>; })}</nav>
         <div className="mt-auto rounded-xl border border-white/10 bg-[linear-gradient(140deg,hsl(201_55%_31%),hsl(211_45%_20%))] p-4"><div className="mb-3 flex items-center gap-2 text-lime-300"><Zap size={16} /><span className="mono text-[10px] uppercase tracking-wider">Signal online</span></div><p className="text-xs leading-5 text-white/65">Weather and grid signals are ready for the next scheduling decision.</p></div>

@@ -14,6 +14,8 @@ import {
   ValidateWorkloadsBody,
   ValidateWorkloadsResponse,
 } from "@workspace/api-zod";
+import { db, companiesTable, dataCentersTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 type Workload = {
   id: string;
@@ -48,7 +50,7 @@ type DataCenter = {
   totalRenewableKwh: number;
   gridAvailabilityKwh: number;
   dataSource: string;
-  efficiencyScore: number;
+  efficiencyScore?: number;
 };
 
 const companies = [
@@ -220,6 +222,92 @@ function findDataCenter(id: string): DataCenter | undefined {
   return dataCenters.find((dataCenter) => dataCenter.id === id);
 }
 
+async function supabaseRequest<T>(table: string, query: string): Promise<T[] | undefined> {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.VITE_SUPABASE_ANON_KEY;
+  if (!url || !key) return undefined;
+  const response = await fetch(`${url}/rest/v1/${table}?${query}`, {
+    headers: { apikey: key, Authorization: `Bearer ${key}` },
+  });
+  if (!response.ok) throw new Error(`Supabase request failed (${response.status})`);
+  return (await response.json()) as T[];
+}
+
+async function listCompaniesFromSource() {
+  if (!db) return companies;
+  const rows = await db.select().from(companiesTable);
+  return rows.map((company) => ({
+    id: String(company.id),
+    name: company.name,
+    description: company.description ?? "",
+    region: company.country ?? "",
+    dataSource: "SUPABASE",
+  }));
+}
+
+async function listDataCentersFromSource(companyId?: string) {
+  if (!db) {
+    return companyId
+      ? dataCenters.filter((dataCenter) => dataCenter.companyId === companyId)
+      : dataCenters;
+  }
+
+  const query = db.select().from(dataCentersTable);
+  const rows = companyId
+    ? await query.where(eq(dataCentersTable.companyId, Number(companyId)))
+    : await query;
+  return rows.map(toApiDataCenter);
+}
+
+async function getDataCenterFromSource(dataCenterId: string) {
+  if (!db) {
+    const liveRows = await supabaseRequest<{
+      company_id: number;
+      data_center_code: string;
+      name: string;
+      location: string;
+      region: string;
+      status: string;
+    }>("data_centers", `select=company_id,data_center_code,name,location,region,status&data_center_code=eq.${encodeURIComponent(dataCenterId)}&limit=1`);
+    if (liveRows?.[0]) {
+      return {
+        id: liveRows[0].data_center_code,
+        companyId: String(liveRows[0].company_id),
+        name: liveRows[0].name,
+        location: liveRows[0].location,
+        region: liveRows[0].region,
+        status: liveRows[0].status,
+        energySources: [],
+        totalRenewableKwh: 0,
+        gridAvailabilityKwh: 0,
+        dataSource: "SUPABASE",
+      } satisfies DataCenter;
+    }
+    return findDataCenter(dataCenterId);
+  }
+  const rows = await db
+    .select()
+    .from(dataCentersTable)
+    .where(eq(dataCentersTable.dataCenterCode, dataCenterId))
+    .limit(1);
+  return rows[0] ? toApiDataCenter(rows[0]) : undefined;
+}
+
+function toApiDataCenter(dataCenter: typeof dataCentersTable.$inferSelect): DataCenter {
+  return {
+    id: dataCenter.dataCenterCode,
+    companyId: String(dataCenter.companyId),
+    name: dataCenter.name,
+    location: dataCenter.location,
+    region: dataCenter.region,
+    status: dataCenter.status,
+    energySources: [],
+    totalRenewableKwh: 0,
+    gridAvailabilityKwh: 0,
+    dataSource: "SUPABASE",
+  };
+}
+
 function validateWorkloadRows(workloads: Workload[]) {
   const issues: { row: number; field: string; message: string; severity: string }[] = [];
   workloads.forEach((workload, index) => {
@@ -316,40 +404,55 @@ function scheduleWorkloads(
 
 const router: IRouter = Router();
 
-router.get("/companies", (_req, res) => {
-  res.json(ListCompaniesResponse.parse(companies));
+router.get("/companies", async (_req, res) => {
+  try {
+    res.json(ListCompaniesResponse.parse(await listCompaniesFromSource()));
+  } catch (error) {
+    console.error("Failed to load companies from Supabase:", error);
+    res.status(503).json({ error: "Unable to load companies from the configured database." });
+  }
 });
 
-router.get("/companies/:companyId/data-centers", (req, res) => {
+router.get("/companies/:companyId/data-centers", async (req, res) => {
   const parsed = ListDataCentersParams.safeParse(req.params);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  res.json(ListDataCentersResponse.parse(dataCenters.filter((item) => item.companyId === parsed.data.companyId)));
+  try {
+    res.json(ListDataCentersResponse.parse(await listDataCentersFromSource(parsed.data.companyId)));
+  } catch (error) {
+    console.error("Failed to load data centers from Supabase:", error);
+    res.status(503).json({ error: "Unable to load data centers from the configured database." });
+  }
 });
 
-router.get("/data-centers/:dataCenterId", (req, res) => {
+router.get("/data-centers/:dataCenterId", async (req, res) => {
   const parsed = GetDataCenterParams.safeParse(req.params);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const dataCenter = findDataCenter(parsed.data.dataCenterId);
-  if (!dataCenter) {
-    res.status(404).json({ error: "Data center not found" });
-    return;
+  try {
+    const dataCenter = await getDataCenterFromSource(parsed.data.dataCenterId);
+    if (!dataCenter) {
+      res.status(404).json({ error: "Data center not found" });
+      return;
+    }
+    res.json(GetDataCenterResponse.parse(dataCenter));
+  } catch (error) {
+    console.error("Failed to load data center from Supabase:", error);
+    res.status(503).json({ error: "Unable to load the data center from the configured database." });
   }
-  res.json(GetDataCenterResponse.parse(dataCenter));
 });
 
-router.get("/dashboard/summary", (req, res) => {
+router.get("/dashboard/summary", async (req, res) => {
   const parsed = GetDashboardSummaryQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const dataCenter = findDataCenter(parsed.data.dataCenterId);
+  const dataCenter = await getDataCenterFromSource(parsed.data.dataCenterId);
   if (!dataCenter) {
     res.status(404).json({ error: "Data center not found" });
     return;
