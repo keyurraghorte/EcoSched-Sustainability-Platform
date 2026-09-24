@@ -55,7 +55,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const actualDataCenterId = dataCenter?.id ?? dataCenterId;
   const [workloads, setWorkloads] = useState<Workload[]>(() => { try { return JSON.parse(localStorage.getItem('ecosched-workloads') ?? 'null') ?? demoWorkloads; } catch { return demoWorkloads; } });
   const [result, setResult] = useState<SchedulingResult>();
-  const setCompanyId = (id: string) => { setCompanyIdState(id); localStorage.setItem('ecosched-company', id); setDataCenterIdState(''); };
+  const setCompanyId = (id: string) => { setCompanyIdState(id); localStorage.setItem('ecosched-company', id); setDataCenterIdState(''); localStorage.removeItem('ecosched-dc'); };
   const setDataCenterId = (id: string) => { setDataCenterIdState(id); localStorage.setItem('ecosched-dc', id); };
   const updateWorkloads = (w: Workload[]) => { setWorkloads(w); localStorage.setItem('ecosched-workloads', JSON.stringify(w)); };
   const value = useMemo(() => ({ companies, dataCenters, company, dataCenter, companyId: actualCompanyId, dataCenterId: actualDataCenterId, setCompanyId, setDataCenterId, workloads, setWorkloads: updateWorkloads, result, setResult }), [companies, dataCenters, company, dataCenter, actualCompanyId, actualDataCenterId, workloads, result]);

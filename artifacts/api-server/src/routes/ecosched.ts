@@ -234,7 +234,19 @@ async function supabaseRequest<T>(table: string, query: string): Promise<T[] | u
 }
 
 async function listCompaniesFromSource() {
-  if (!db) return companies;
+  if (!db) {
+    const rows = await supabaseRequest<{ id: number; name: string; description: string | null; country: string | null }>(
+      "companies",
+      "select=id,name,description,country&order=id",
+    );
+    return (rows ?? []).map((company) => ({
+      id: String(company.id),
+      name: company.name,
+      description: company.description ?? "",
+      region: company.country ?? "",
+      dataSource: "SUPABASE",
+    }));
+  }
   const rows = await db.select().from(companiesTable);
   return rows.map((company) => ({
     id: String(company.id),
@@ -247,9 +259,28 @@ async function listCompaniesFromSource() {
 
 async function listDataCentersFromSource(companyId?: string) {
   if (!db) {
-    return companyId
-      ? dataCenters.filter((dataCenter) => dataCenter.companyId === companyId)
-      : dataCenters;
+    const filters = companyId ? `&company_id=eq.${encodeURIComponent(companyId)}` : "";
+    const rows = await supabaseRequest<{
+      id: number;
+      company_id: number;
+      data_center_code: string;
+      name: string;
+      location: string;
+      region: string;
+      status: string;
+    }>("data_centers", `select=id,company_id,data_center_code,name,location,region,status&status=eq.active${filters}&order=id`);
+    return (rows ?? []).map((dataCenter) => ({
+      id: String(dataCenter.id),
+      companyId: String(dataCenter.company_id),
+      name: dataCenter.name,
+      location: dataCenter.location,
+      region: dataCenter.region,
+      status: dataCenter.status,
+      energySources: [],
+      totalRenewableKwh: Number.NaN,
+      gridAvailabilityKwh: Number.NaN,
+      dataSource: "SUPABASE",
+    } satisfies DataCenter));
   }
 
   const query = db.select().from(dataCentersTable);
@@ -262,16 +293,17 @@ async function listDataCentersFromSource(companyId?: string) {
 async function getDataCenterFromSource(dataCenterId: string) {
   if (!db) {
     const liveRows = await supabaseRequest<{
+      id: number;
       company_id: number;
       data_center_code: string;
       name: string;
       location: string;
       region: string;
       status: string;
-    }>("data_centers", `select=company_id,data_center_code,name,location,region,status&data_center_code=eq.${encodeURIComponent(dataCenterId)}&limit=1`);
+    }>("data_centers", `select=id,company_id,data_center_code,name,location,region,status&id=eq.${encodeURIComponent(dataCenterId)}&status=eq.active&limit=1`);
     if (liveRows?.[0]) {
       return {
-        id: liveRows[0].data_center_code,
+        id: String(liveRows[0].id),
         companyId: String(liveRows[0].company_id),
         name: liveRows[0].name,
         location: liveRows[0].location,
@@ -283,19 +315,19 @@ async function getDataCenterFromSource(dataCenterId: string) {
         dataSource: "SUPABASE",
       } satisfies DataCenter;
     }
-    return findDataCenter(dataCenterId);
+    return undefined;
   }
   const rows = await db
     .select()
     .from(dataCentersTable)
-    .where(eq(dataCentersTable.dataCenterCode, dataCenterId))
+    .where(eq(dataCentersTable.id, Number(dataCenterId)))
     .limit(1);
   return rows[0] ? toApiDataCenter(rows[0]) : undefined;
 }
 
 function toApiDataCenter(dataCenter: typeof dataCentersTable.$inferSelect): DataCenter {
   return {
-    id: dataCenter.dataCenterCode,
+    id: String(dataCenter.id),
     companyId: String(dataCenter.companyId),
     name: dataCenter.name,
     location: dataCenter.location,
