@@ -23,33 +23,45 @@ type DataCenterRow = {
 export async function getCompanies(): Promise<Company[]> {
   const { data, error } = await supabase.from('companies').select('id,name,description,country').order('name');
   if (error) throw new Error(`Unable to load company data: ${error.message}`);
-  return ((data ?? []) as CompanyRow[]).map((company) => ({
-    id: String(company.id),
-    name: company.name,
-    description: company.description ?? '',
-    region: company.region ?? company.country ?? '',
-    dataSource: 'SUPABASE',
-  }));
+  return ((data ?? []) as CompanyRow[])
+    .filter((company) => company.id !== null && company.id !== undefined && company.name?.trim())
+    .map((company) => ({
+      id: String(company.id),
+      name: company.name.trim(),
+      description: company.description ?? '',
+      region: company.region ?? company.country ?? '',
+      dataSource: 'SUPABASE',
+    }));
 }
 
-export async function getDataCentersByCompany(companyId: string): Promise<DataCenter[]> {
+export async function getDataCentersByCompany(companyId: string | number): Promise<DataCenter[]> {
   const { data, error } = await supabase
     .from('data_centers')
     .select('id,company_id,data_center_code,name,location,country,region,status')
-    .eq('company_id', companyId)
+    .eq('company_id', String(companyId))
     .eq('status', 'active')
     .order('name');
   if (error) throw new Error(`Unable to load data centers: ${error.message}`);
-  return ((data ?? []) as DataCenterRow[]).map((dataCenter) => ({
-    id: dataCenter.data_center_code,
-    companyId: String(dataCenter.company_id),
-    name: dataCenter.name,
-    location: dataCenter.location,
-    region: dataCenter.region,
-    status: dataCenter.status,
-    energySources: [],
-    totalRenewableKwh: 0,
-    gridAvailabilityKwh: 0,
-    dataSource: 'SUPABASE',
-  }));
+  return ((data ?? []) as DataCenterRow[])
+    .filter((dataCenter) => (
+      dataCenter.id !== null &&
+      dataCenter.company_id !== null &&
+      dataCenter.data_center_code?.trim() &&
+      dataCenter.name?.trim() &&
+      dataCenter.location?.trim() &&
+      dataCenter.region?.trim() &&
+      dataCenter.status === 'active'
+    ))
+    .map((dataCenter) => ({
+      id: dataCenter.data_center_code,
+      companyId: String(dataCenter.company_id),
+      name: dataCenter.name.trim(),
+      location: dataCenter.location.trim(),
+      region: dataCenter.region.trim(),
+      status: dataCenter.status,
+      energySources: [],
+      totalRenewableKwh: 0,
+      gridAvailabilityKwh: 0,
+      dataSource: 'SUPABASE',
+    }));
 }
