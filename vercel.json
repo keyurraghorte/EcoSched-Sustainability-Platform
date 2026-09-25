@@ -1,8 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
-  "buildCommand": "pnpm --filter @workspace/ecosched build",
-  "outputDirectory": "artifacts/ecosched/dist/public",
+  "buildCommand": "node scripts/build-vercel.mjs",
+  "outputDirectory": "public",
   "installCommand": "pnpm install --no-frozen-lockfile",
   "rewrites": [
     {
@@ -11,3 +11,4 @@
     }
   ]
 }
+
