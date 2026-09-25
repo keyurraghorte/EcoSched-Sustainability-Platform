@@ -60,18 +60,28 @@ for (const dir of targetDirs) {
   }
 }
 
-// Ensure api entrypoints exist for all possible Vercel project root configs
-const apiLocations = [
-  { dir: path.join(repoRoot, 'api'), content: "import app from '../artifacts/api-server/src/app';\n\nexport default function handler(req: any, res: any) {\n  return app(req, res);\n}\n" },
-  { dir: path.join(repoRoot, 'artifacts/api-server/api'), content: "import app from '../src/app';\n\nexport default function handler(req: any, res: any) {\n  return app(req, res);\n}\n" },
-  { dir: path.join(repoRoot, 'artifacts/ecosched/api'), content: "import app from '../../api-server/src/app';\n\nexport default function handler(req: any, res: any) {\n  return app(req, res);\n}\n" },
+// Ensure pre-bundled API entrypoints exist (pure JS so Vercel does not run tsc on unbundled TS)
+const handlerSource = path.join(repoRoot, 'artifacts/api-server/dist/vercel-handler.mjs');
+const apiDirs = [
+  path.join(repoRoot, 'api'),
+  path.join(repoRoot, 'artifacts/api-server/api'),
+  path.join(repoRoot, 'artifacts/ecosched/api'),
+  path.join(process.cwd(), 'api'),
 ];
 
-for (const { dir, content } of apiLocations) {
+for (const dir of apiDirs) {
   try {
     fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, 'index.ts'), content, 'utf8');
-    console.log(`[build-vercel] Verified API handler in ${dir}`);
+    // Remove index.ts if present to prevent Vercel from attempting tsc compilation
+    const tsFile = path.join(dir, 'index.ts');
+    if (fs.existsSync(tsFile)) {
+      fs.unlinkSync(tsFile);
+    }
+    // Copy bundled vercel-handler to index.js
+    if (fs.existsSync(handlerSource)) {
+      fs.copyFileSync(handlerSource, path.join(dir, 'index.js'));
+      console.log(`[build-vercel] Deployed bundled API handler to ${path.join(dir, 'index.js')}`);
+    }
   } catch (err) {
     console.warn(`[build-vercel] Note on API handler in ${dir}:`, err.message);
   }
