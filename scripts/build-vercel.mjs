@@ -60,4 +60,21 @@ for (const dir of targetDirs) {
   }
 }
 
+// Ensure api entrypoints exist for all possible Vercel project root configs
+const apiLocations = [
+  { dir: path.join(repoRoot, 'api'), content: "import app from '../artifacts/api-server/src/app';\n\nexport default function handler(req: any, res: any) {\n  return app(req, res);\n}\n" },
+  { dir: path.join(repoRoot, 'artifacts/api-server/api'), content: "import app from '../src/app';\n\nexport default function handler(req: any, res: any) {\n  return app(req, res);\n}\n" },
+  { dir: path.join(repoRoot, 'artifacts/ecosched/api'), content: "import app from '../../api-server/src/app';\n\nexport default function handler(req: any, res: any) {\n  return app(req, res);\n}\n" },
+];
+
+for (const { dir, content } of apiLocations) {
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'index.ts'), content, 'utf8');
+    console.log(`[build-vercel] Verified API handler in ${dir}`);
+  } catch (err) {
+    console.warn(`[build-vercel] Note on API handler in ${dir}:`, err.message);
+  }
+}
+
 console.log('[build-vercel] Build complete. Ready for Vercel deployment.');

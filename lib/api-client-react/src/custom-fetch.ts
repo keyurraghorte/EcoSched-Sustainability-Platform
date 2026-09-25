@@ -302,6 +302,14 @@ async function parseSuccessBody(
   const effectiveType =
     responseType === "auto" ? inferResponseType(response) : responseType;
 
+  if (responseType === "auto" && getMediaType(response.headers) === "text/html") {
+    throw new ApiError(
+      response,
+      `API endpoint returned HTML instead of expected JSON data for ${requestInfo.method} ${requestInfo.url}`,
+      requestInfo,
+    );
+  }
+
   switch (effectiveType) {
     case "json":
       return parseJsonBody(response, requestInfo);
