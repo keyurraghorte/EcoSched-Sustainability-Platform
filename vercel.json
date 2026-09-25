@@ -1,6 +1,7 @@
 {
   "buildCommand": "corepack pnpm --filter @workspace/ecosched build",
   "outputDirectory": "artifacts/ecosched/dist/public",
+  "installCommand": "corepack pnpm install --frozen-lockfile",
   "rewrites": [
     {
       "source": "/((?!api(?:/|$)).*)",
