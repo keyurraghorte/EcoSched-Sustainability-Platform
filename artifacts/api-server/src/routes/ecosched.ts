@@ -223,8 +223,8 @@ function findDataCenter(id: string): DataCenter | undefined {
 }
 
 async function supabaseRequest<T>(table: string, query: string): Promise<T[] | undefined> {
-  const url = process.env.VITE_SUPABASE_URL;
-  const key = process.env.VITE_SUPABASE_ANON_KEY;
+  const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "https://tvhggpfpqzenwwcqwhuh.supabase.co";
+  const key = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "sb_publishable_SeCGJyO8Y1YqbYoazoZmsQ_M9oWdEMV";
   if (!url || !key) return undefined;
   const response = await fetch(`${url}/rest/v1/${table}?${query}`, {
     headers: { apikey: key, Authorization: `Bearer ${key}` },

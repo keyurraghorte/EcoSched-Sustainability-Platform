@@ -2,19 +2,32 @@
   "name": "workspace",
   "version": "0.0.0",
   "license": "MIT",
+  "packageManager": "pnpm@9.15.0",
   "scripts": {
     "dev": "node ./scripts/dev.mjs",
     "dev:web": "node ./scripts/dev.mjs --web-only",
     "dev:api": "node ./scripts/dev.mjs --api-only",
-    "build": "corepack pnpm run typecheck && corepack pnpm -r --if-present run build",
+    "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
-    "typecheck": "corepack pnpm run typecheck:libs && corepack pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@swc/core",
+      "esbuild",
+      "msw",
+      "unrs-resolver"
+    ]
   },
   "private": true,
   "dependencies": {
-    "@replit/connectors-sdk": "^0.4.3"
+    "@replit/connectors-sdk": "^0.4.3",
+    "cors": "^2.8.5",
+    "express": "^5.2.1"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
     "prettier": "^3.9.6",
     "typescript": "~5.9.3"
   }

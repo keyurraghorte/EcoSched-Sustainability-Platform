@@ -55,3 +55,12 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+.npm-cache/
+.pnpm-local/
+.pnpm-store/
+.xdg-cache/
+.xdg-state/
+*.log
+test-*.txt
+debug-log.txt
+_start-*.cjs

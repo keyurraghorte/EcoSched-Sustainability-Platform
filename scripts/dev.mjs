@@ -16,9 +16,13 @@ const args = new Set(process.argv.slice(2));
 const webOnly = args.has("--web-only");
 const apiOnly = args.has("--api-only");
 
-const viteBin = path.join(root, "node_modules", "vite", "bin", "vite.js");
 const apiDir = path.join(root, "artifacts", "api-server");
 const webDir = path.join(root, "artifacts", "ecosched");
+const possibleViteBins = [
+  path.join(webDir, "node_modules", "vite", "bin", "vite.js"),
+  path.join(root, "node_modules", "vite", "bin", "vite.js"),
+];
+const viteBin = possibleViteBins.find((p) => fs.existsSync(p)) || possibleViteBins[0];
 
 function fail(message) {
   console.error(`\n[dev] ${message}\n`);

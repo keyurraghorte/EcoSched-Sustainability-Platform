@@ -1,8 +1,13 @@
 {
-  "buildCommand": "corepack pnpm --filter @workspace/ecosched build",
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "pnpm --filter @workspace/ecosched build",
   "outputDirectory": "artifacts/ecosched/dist/public",
-  "installCommand": "corepack pnpm install --frozen-lockfile",
+  "installCommand": "pnpm install",
   "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/[...path]"
+    },
     {
       "source": "/((?!api(?:/|$)).*)",
       "destination": "/index.html"
