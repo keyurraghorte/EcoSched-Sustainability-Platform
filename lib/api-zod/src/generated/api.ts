@@ -99,13 +99,13 @@ export const GetDashboardSummaryQueryParams = zod.object({
 export const GetDashboardSummaryResponse = zod.object({
   "dataCenterId": zod.string(),
   "dataCenterName": zod.string(),
-  "totalWorkloads": zod.number().int(),
-  "totalEnergyKwh": zod.number(),
-  "renewableEnergyKwh": zod.number(),
-  "gridEnergyKwh": zod.number(),
-  "renewablePct": zod.number(),
-  "co2Kg": zod.number(),
-  "deadlineCompliancePct": zod.number(),
+  "totalWorkloads": zod.number().int().nullable(),
+  "totalEnergyKwh": zod.number().nullable(),
+  "renewableEnergyKwh": zod.number().nullable(),
+  "gridEnergyKwh": zod.number().nullable(),
+  "renewablePct": zod.number().nullable(),
+  "co2Kg": zod.number().nullable(),
+  "deadlineCompliancePct": zod.number().nullable(),
   "energyTrend": zod.array(zod.object({
   "time": zod.string(),
   "solar": zod.number(),
@@ -245,5 +245,4 @@ export const RunSchedulingResponse = zod.object({
 })),
   "sourceLabels": zod.array(zod.string())
 })
-
 

@@ -492,22 +492,15 @@ router.get("/dashboard/summary", async (req, res) => {
   const summary = {
     dataCenterId: dataCenter.id,
     dataCenterName: dataCenter.name,
-    totalWorkloads: demoWorkloads.length,
-    totalEnergyKwh: 360,
-    renewableEnergyKwh: 302,
-    gridEnergyKwh: 58,
-    renewablePct: 84,
-    co2Kg: 24.4,
-    deadlineCompliancePct: 92,
-    energyTrend: [
-      { time: "08:00", solar: 62, wind: 76, hydro: 88, grid: 16 },
-      { time: "10:00", solar: 81, wind: 72, hydro: 86, grid: 11 },
-      { time: "12:00", solar: 94, wind: 68, hydro: 84, grid: 8 },
-      { time: "14:00", solar: 88, wind: 74, hydro: 82, grid: 10 },
-      { time: "16:00", solar: 72, wind: 80, hydro: 80, grid: 14 },
-      { time: "18:00", solar: 39, wind: 83, hydro: 78, grid: 22 },
-    ],
-    sourceLabels: ["DEMO DATA catalog", "Calculated demo scheduling run"],
+    totalWorkloads: null,
+    totalEnergyKwh: null,
+    renewableEnergyKwh: null,
+    gridEnergyKwh: null,
+    renewablePct: null,
+    co2Kg: null,
+    deadlineCompliancePct: null,
+    energyTrend: [],
+    sourceLabels: ["No workload, energy-consumption, carbon, or scheduling-result data is available for this data center."],
   };
   res.json(GetDashboardSummaryResponse.parse(summary));
 });

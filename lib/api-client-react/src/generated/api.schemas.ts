@@ -152,13 +152,13 @@ export type DashboardSummaryEnergyTrendItem = {
 export interface DashboardSummary {
   dataCenterId: string;
   dataCenterName: string;
-  totalWorkloads: number;
-  totalEnergyKwh: number;
-  renewableEnergyKwh: number;
-  gridEnergyKwh: number;
-  renewablePct: number;
-  co2Kg: number;
-  deadlineCompliancePct: number;
+  totalWorkloads: number | null;
+  totalEnergyKwh: number | null;
+  renewableEnergyKwh: number | null;
+  gridEnergyKwh: number | null;
+  renewablePct: number | null;
+  co2Kg: number | null;
+  deadlineCompliancePct: number | null;
   energyTrend: DashboardSummaryEnergyTrendItem[];
   sourceLabels: string[];
 }
@@ -166,4 +166,3 @@ export interface DashboardSummary {
 export type GetDashboardSummaryParams = {
 dataCenterId: string;
 };
-
