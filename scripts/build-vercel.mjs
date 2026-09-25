@@ -72,10 +72,12 @@ const apiDirs = [
 for (const dir of apiDirs) {
   try {
     fs.mkdirSync(dir, { recursive: true });
-    // Remove index.ts if present to prevent Vercel from attempting tsc compilation
-    const tsFile = path.join(dir, 'index.ts');
-    if (fs.existsSync(tsFile)) {
-      fs.unlinkSync(tsFile);
+    // Remove any .ts files in api dir to prevent Vercel from attempting tsc compilation
+    const files = fs.readdirSync(dir);
+    for (const file of files) {
+      if (file.endsWith('.ts')) {
+        fs.unlinkSync(path.join(dir, file));
+      }
     }
     // Copy bundled vercel-handler to index.js
     if (fs.existsSync(handlerSource)) {
