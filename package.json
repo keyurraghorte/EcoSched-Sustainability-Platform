@@ -21,13 +21,9 @@
   },
   "private": true,
   "dependencies": {
-    "@replit/connectors-sdk": "^0.4.3",
-    "cors": "^2.8.5",
-    "express": "^5.2.1"
+    "@replit/connectors-sdk": "^0.4.3"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
     "prettier": "^3.9.6",
     "typescript": "~5.9.3"
   }
