@@ -1,0 +1,10 @@
+{
+  "buildCommand": "corepack pnpm --filter @workspace/ecosched build",
+  "outputDirectory": "artifacts/ecosched/dist/public",
+  "rewrites": [
+    {
+      "source": "/((?!api(?:/|$)).*)",
+      "destination": "/index.html"
+    }
+  ]
+}
