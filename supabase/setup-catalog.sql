@@ -47,6 +47,20 @@ on conflict (id) do update set
 create index if not exists data_centers_company_id_idx
   on public.data_centers(company_id);
 
+insert into public.data_centers (company_id, data_center_code, name, location, country, region, pue_2025, wue_2025, cpu_capacity, memory_capacity_gb, status)
+values
+  (1, 'MS-NO-01', 'Oslo Fjord 01', 'Oslo, Norway', 'Norway', 'Nordic region', 1.15, 0.20, 2048, 8192, 'active'),
+  (1, 'MS-SE-03', 'Stockholm North 03', 'Stockholm, Sweden', 'Sweden', 'Nordic region', 1.12, 0.18, 4096, 16384, 'active'),
+  (1, 'MS-NL-02', 'Rotterdam Delta 02', 'Rotterdam, Netherlands', 'Netherlands', 'Western Europe', 1.22, 0.35, 1024, 4096, 'active'),
+  (2, 'AWS-IE-01', 'Dublin Green 01', 'Dublin, Ireland', 'Ireland', 'Western Europe', 1.20, 0.25, 3072, 12288, 'active'),
+  (3, 'GCP-DE-02', 'Frankfurt Clean 02', 'Frankfurt, Germany', 'Germany', 'Western Europe', 1.18, 0.22, 2048, 8192, 'active'),
+  (4, 'META-SE-01', 'Lulea Arctic 01', 'Lulea, Sweden', 'Sweden', 'Nordic region', 1.09, 0.15, 4096, 16384, 'active')
+on conflict (data_center_code) do update set
+  name = excluded.name,
+  location = excluded.location,
+  status = excluded.status;
+
+
 alter table public.companies enable row level security;
 alter table public.data_centers enable row level security;
 

@@ -41887,7 +41887,8 @@ __export(schema_exports, {
   dataCentersTable: () => dataCentersTable,
   priorityEnum: () => priorityEnum,
   statusEnum: () => statusEnum,
-  workloads: () => workloads
+  workloads: () => workloads,
+  workloadsTable: () => workloadsTable
 });
 
 // ../../lib/db/src/schema/workloads.ts
@@ -41915,6 +41916,7 @@ var workloads = pgTable("workloads", {
   sourceAllocationMix: text("source_allocation_mix"),
   createdAt: timestamp("created_at", { mode: "string", withTimezone: true }).defaultNow().notNull()
 });
+var workloadsTable = workloads;
 
 // ../../lib/db/src/schema/index.ts
 var companiesTable = pgTable("companies", {
@@ -41951,6 +41953,12 @@ var dataCentersTable = pgTable("data_centers", {
 });
 
 // ../../lib/db/src/index.ts
+if (typeof process.loadEnvFile === "function") {
+  try {
+    process.loadEnvFile(".env");
+  } catch {
+  }
+}
 var connectionString = process.env.DATABASE_URL || "";
 var client = src_default(connectionString, { prepare: false });
 var db = drizzle(client, { schema: schema_exports });
