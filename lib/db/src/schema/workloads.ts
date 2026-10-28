@@ -40,5 +40,7 @@ export const workloads = pgTable("workloads", {
 });
 
 // Standard Drizzle infer types
+export const workloadsTable = workloads;
 export type WorkloadInsert = typeof workloads.$inferInsert;
 export type WorkloadSelect = typeof workloads.$inferSelect;
+
