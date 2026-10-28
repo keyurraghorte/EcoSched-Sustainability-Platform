@@ -112,7 +112,7 @@ if (!apiOnly) {
   start(
     "web",
     process.execPath,
-    [viteBin, "--config", "vite.config.ts", "--host", "0.0.0.0"],
+    [viteBin, "--config", "vite.config.ts", "--host", process.env.HOST || "::"],
     {
       cwd: webDir,
       env: {

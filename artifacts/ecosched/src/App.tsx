@@ -5,7 +5,8 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import { AppShell } from '@/components/shell';
-import { BeforeAfterPage, Dashboard, DataCenterPage, Landing, ResultsPage, SchedulingPage, WeatherEnergyPage, WorkloadsPage } from '@/pages/ecosched-pages';
+import { BeforeAfterPage, Dashboard, DataCenterPage, Landing, ResultsPage, SchedulingPage, WeatherEnergyPage } from '@/pages/ecosched-pages';
+import Workloads from '@/client/pages/Workloads';
 import {
   Route,
   Switch,
@@ -29,8 +30,9 @@ function Router() {
           <AppShell><DataCenterPage /></AppShell>
         </Route>
         <Route path="/workloads">
-          <AppShell><WorkloadsPage /></AppShell>
+          <AppShell><Workloads /></AppShell>
         </Route>
+
         <Route path="/weather-energy">
           <AppShell><WeatherEnergyPage /></AppShell>
         </Route>

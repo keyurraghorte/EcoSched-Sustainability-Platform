@@ -35,3 +35,5 @@ export const dataCentersTable = pgTable("data_centers", {
   dataConfidence: text("data_confidence"),
   createdAt: timestamp("created_at", { withTimezone: true }),
 });
+
+export * from "./workloads";

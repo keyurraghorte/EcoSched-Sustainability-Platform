@@ -4,6 +4,12 @@
   "buildCommand": "node scripts/build-vercel.mjs",
   "outputDirectory": "public",
   "installCommand": "pnpm install --no-frozen-lockfile",
+  "crons": [
+    {
+      "path": "/api/cron/schedule",
+      "schedule": "0 * * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/api",

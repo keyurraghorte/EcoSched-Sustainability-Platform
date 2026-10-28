@@ -8,6 +8,7 @@
     "dev:web": "node ./scripts/dev.mjs --web-only",
     "dev:api": "node ./scripts/dev.mjs --api-only",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
+    "build:vercel": "node ./scripts/build-vercel.mjs",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
   },

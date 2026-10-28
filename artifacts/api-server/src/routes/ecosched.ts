@@ -223,8 +223,8 @@ function findDataCenter(id: string): DataCenter | undefined {
 }
 
 async function supabaseRequest<T>(table: string, query: string): Promise<T[] | undefined> {
-  const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "https://tvhggpfpqzenwwcqwhuh.supabase.co";
-  const key = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "sb_publishable_SeCGJyO8Y1YqbYoazoZmsQ_M9oWdEMV";
+  const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "https://zxadswmkubwjfqicdhzc.supabase.co";
+  const key = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "sb_publishable_HO2VuWFuoBAYYACrPh5i-g_zMeIJhyi";
   if (!url || !key) return undefined;
   const response = await fetch(`${url}/rest/v1/${table}?${query}`, {
     headers: { apikey: key, Authorization: `Bearer ${key}` },
@@ -235,26 +235,40 @@ async function supabaseRequest<T>(table: string, query: string): Promise<T[] | u
 
 async function listCompaniesFromSource() {
   if (!db) {
-    const rows = await supabaseRequest<{ id: number; name: string; description: string | null; country: string | null }>(
-      "companies",
-      "select=id,name,description,country&order=id",
-    );
-    return (rows ?? []).map((company) => ({
-      id: String(company.id),
-      name: company.name,
-      description: company.description ?? "",
-      region: company.country ?? "",
-      dataSource: "SUPABASE",
-    }));
+    try {
+      const rows = await supabaseRequest<{ id: number; name: string; description: string | null; country: string | null }>(
+        "companies",
+        "select=id,name,description,country&order=id",
+      );
+      if (rows && rows.length > 0) {
+        return rows.map((company) => ({
+          id: String(company.id),
+          name: company.name,
+          description: company.description ?? "",
+          region: company.country ?? "",
+          dataSource: "SUPABASE",
+        }));
+      }
+    } catch (err) {
+      console.warn("[ecosched] Note: Supabase companies table not ready yet, using built-in catalog fallback.");
+    }
+    return companies;
   }
-  const rows = await db.select().from(companiesTable);
-  return rows.map((company) => ({
-    id: String(company.id),
-    name: company.name,
-    description: company.description ?? "",
-    region: company.country ?? "",
-    dataSource: "SUPABASE",
-  }));
+  try {
+    const rows = await db.select().from(companiesTable);
+    if (rows && rows.length > 0) {
+      return rows.map((company) => ({
+        id: String(company.id),
+        name: company.name,
+        description: company.description ?? "",
+        region: company.country ?? "",
+        dataSource: "SUPABASE",
+      }));
+    }
+  } catch {
+    console.warn("[ecosched] DB query failed, falling back to built-in companies.");
+  }
+  return companies;
 }
 
 function getDataCenterEnergyProfile(info: { name?: string; location?: string; region?: string }) {
@@ -322,80 +336,102 @@ function getDataCenterEnergyProfile(info: { name?: string; location?: string; re
 
 async function listDataCentersFromSource(companyId?: string): Promise<DataCenter[]> {
   if (!db) {
-    const filters = companyId ? `&company_id=eq.${encodeURIComponent(companyId)}` : "";
-    const rows = await supabaseRequest<{
-      id: number;
-      company_id: number;
-      data_center_code: string;
-      name: string;
-      location: string;
-      region: string;
-      status: string;
-    }>("data_centers", `select=id,company_id,data_center_code,name,location,region,status&status=eq.active${filters}&order=id`);
-    return (rows ?? []).map((dataCenter) => {
-      const profile = getDataCenterEnergyProfile(dataCenter);
-      return {
-        id: String(dataCenter.id),
-        companyId: String(dataCenter.company_id),
-        name: dataCenter.name,
-        location: dataCenter.location,
-        region: dataCenter.region,
-        status: dataCenter.status,
-        energySources: profile.energySources,
-        totalRenewableKwh: profile.totalRenewableKwh,
-        gridAvailabilityKwh: profile.gridAvailabilityKwh,
-        dataSource: "SUPABASE",
-        efficiencyScore: profile.efficiencyScore,
-      } satisfies DataCenter;
-    });
+    try {
+      const filters = companyId ? `&company_id=eq.${encodeURIComponent(companyId)}` : "";
+      const rows = await supabaseRequest<{
+        id: number;
+        company_id: number;
+        data_center_code: string;
+        name: string;
+        location: string;
+        region: string;
+        status: string;
+      }>("data_centers", `select=id,company_id,data_center_code,name,location,region,status&status=eq.active${filters}&order=id`);
+      if (rows && rows.length > 0) {
+        return rows.map((dataCenter) => {
+          const profile = getDataCenterEnergyProfile(dataCenter);
+          return {
+            id: String(dataCenter.id),
+            companyId: String(dataCenter.company_id),
+            name: dataCenter.name,
+            location: dataCenter.location,
+            region: dataCenter.region,
+            status: dataCenter.status,
+            energySources: profile.energySources,
+            totalRenewableKwh: profile.totalRenewableKwh,
+            gridAvailabilityKwh: profile.gridAvailabilityKwh,
+            dataSource: "SUPABASE",
+            efficiencyScore: profile.efficiencyScore,
+          } satisfies DataCenter;
+        });
+      }
+    } catch (err) {
+      console.warn("[ecosched] Note: Supabase data_centers table not ready yet, using built-in catalog fallback.");
+    }
+    return companyId ? dataCenters.filter((d) => d.companyId === companyId) : dataCenters;
   }
 
-  const query = db.select().from(dataCentersTable);
-  const rows = companyId
-    ? await query.where(eq(dataCentersTable.companyId, Number(companyId)))
-    : await query;
-  return rows.map(toApiDataCenter);
+  try {
+    const query = db.select().from(dataCentersTable);
+    const rows = companyId
+      ? await query.where(eq(dataCentersTable.companyId, Number(companyId)))
+      : await query;
+    if (rows && rows.length > 0) {
+      return rows.map(toApiDataCenter);
+    }
+  } catch {
+    console.warn("[ecosched] DB data_centers query failed, falling back to built-in catalog.");
+  }
+  return companyId ? dataCenters.filter((d) => d.companyId === companyId) : dataCenters;
 }
 
 async function getDataCenterFromSource(dataCenterId: string): Promise<DataCenter | undefined> {
   const mockDc = findDataCenter(dataCenterId);
-  if (mockDc) return mockDc;
 
   if (!db) {
-    const liveRows = await supabaseRequest<{
-      id: number;
-      company_id: number;
-      data_center_code: string;
-      name: string;
-      location: string;
-      region: string;
-      status: string;
-    }>("data_centers", `select=id,company_id,data_center_code,name,location,region,status&id=eq.${encodeURIComponent(dataCenterId)}&status=eq.active&limit=1`);
-    if (liveRows?.[0]) {
-      const row = liveRows[0];
-      const profile = getDataCenterEnergyProfile(row);
-      return {
-        id: String(row.id),
-        companyId: String(row.company_id),
-        name: row.name,
-        location: row.location,
-        region: row.region,
-        status: row.status,
-        energySources: profile.energySources,
-        totalRenewableKwh: profile.totalRenewableKwh,
-        gridAvailabilityKwh: profile.gridAvailabilityKwh,
-        dataSource: "SUPABASE",
-        efficiencyScore: profile.efficiencyScore,
-      } satisfies DataCenter;
+    try {
+      const liveRows = await supabaseRequest<{
+        id: number;
+        company_id: number;
+        data_center_code: string;
+        name: string;
+        location: string;
+        region: string;
+        status: string;
+      }>("data_centers", `select=id,company_id,data_center_code,name,location,region,status&id=eq.${encodeURIComponent(dataCenterId)}&status=eq.active&limit=1`);
+      if (liveRows?.[0]) {
+        const row = liveRows[0];
+        const profile = getDataCenterEnergyProfile(row);
+        return {
+          id: String(row.id),
+          companyId: String(row.company_id),
+          name: row.name,
+          location: row.location,
+          region: row.region,
+          status: row.status,
+          energySources: profile.energySources,
+          totalRenewableKwh: profile.totalRenewableKwh,
+          gridAvailabilityKwh: profile.gridAvailabilityKwh,
+          dataSource: "SUPABASE",
+          efficiencyScore: profile.efficiencyScore,
+        } satisfies DataCenter;
+      }
+    } catch {
+      // Fallback to mockDc
     }
-    return undefined;
+    return mockDc;
   }
-  const rows = await db
-    .select()
-    .from(dataCentersTable)
-    .where(eq(dataCentersTable.id, Number(dataCenterId)))
-    .limit(1);
-  return rows[0] ? toApiDataCenter(rows[0]) : undefined;
+  try {
+    const rows = await db
+      .select()
+      .from(dataCentersTable)
+      .where(eq(dataCentersTable.id, Number(dataCenterId)))
+      .limit(1);
+    if (rows[0]) return toApiDataCenter(rows[0]);
+  } catch {
+    // Fallback to mockDc
+  }
+  return mockDc;
 }
 
 function toApiDataCenter(dataCenter: typeof dataCentersTable.$inferSelect): DataCenter {
