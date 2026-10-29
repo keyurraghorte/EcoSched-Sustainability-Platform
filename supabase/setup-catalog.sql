@@ -34,10 +34,11 @@ create table if not exists public.data_centers (
 
 insert into public.companies (id, company_code, name, country, description)
 values
-  (1, 'MS', 'Microsoft', 'United States', 'Microsoft cloud and data-center infrastructure.'),
-  (2, 'AWS', 'Amazon Web Services', 'United States', 'AWS cloud and data-center infrastructure.'),
-  (3, 'GOOGLE', 'Google Cloud', 'United States', 'Google Cloud infrastructure.'),
-  (4, 'META', 'Meta', 'United States', 'Meta data-center infrastructure.')
+  (1, 'EQ-NORDIC', 'Equinix & Nordic Clean Cloud', 'Norway', 'Premier colocation & green interconnection facilities across the Nordic renewable corridors.'),
+  (2, 'VERDANT', 'Verdant & Continental Green', 'Germany', 'Low-carbon European compute clusters with certified PPA renewable energy matching.'),
+  (3, 'MSFT-AZURE', 'Microsoft Azure (Zero-Carbon)', 'United States', 'Hyperscale cloud regions powered by 24/7 hourly matched carbon-free electricity.'),
+  (4, 'AWS', 'Amazon Web Services (AWS)', 'United States', 'AWS low-carbon regions with zero-carbon grid power matching and water stewardship.'),
+  (5, 'GOOGLE-CFE', 'Google Cloud Platform (GCP)', 'United States', 'Google 24/7 carbon-free energy (CFE) facilities with Baltic sea-water cooling.')
 on conflict (id) do update set
   company_code = excluded.company_code,
   name = excluded.name,
@@ -49,20 +50,68 @@ create index if not exists data_centers_company_id_idx
 
 insert into public.data_centers (company_id, data_center_code, name, location, country, region, pue_2025, wue_2025, cpu_capacity, memory_capacity_gb, status)
 values
-  (1, 'MS-NO-01', 'Oslo Fjord 01', 'Oslo, Norway', 'Norway', 'Nordic region', 1.15, 0.20, 2048, 8192, 'active'),
-  (1, 'MS-SE-03', 'Stockholm North 03', 'Stockholm, Sweden', 'Sweden', 'Nordic region', 1.12, 0.18, 4096, 16384, 'active'),
-  (1, 'MS-NL-02', 'Rotterdam Delta 02', 'Rotterdam, Netherlands', 'Netherlands', 'Western Europe', 1.22, 0.35, 1024, 4096, 'active'),
-  (2, 'AWS-IE-01', 'Dublin Green 01', 'Dublin, Ireland', 'Ireland', 'Western Europe', 1.20, 0.25, 3072, 12288, 'active'),
-  (3, 'GCP-DE-02', 'Frankfurt Clean 02', 'Frankfurt, Germany', 'Germany', 'Western Europe', 1.18, 0.22, 2048, 8192, 'active'),
-  (4, 'META-SE-01', 'Lulea Arctic 01', 'Lulea, Sweden', 'Sweden', 'Nordic region', 1.09, 0.15, 4096, 16384, 'active')
+  (1, 'EQ-NO-01', 'Equinix OS1 (Oslo Fjord)', 'Oslo, Norway', 'Norway', 'Nordic region', 1.14, 0.18, 4096, 16384, 'active'),
+  (1, 'EQ-SE-03', 'Equinix SK1 (Stockholm North)', 'Stockholm, Sweden', 'Sweden', 'Nordic region', 1.11, 0.14, 4096, 16384, 'active'),
+  (1, 'NC-NL-02', 'NorthC (Rotterdam Zestienhoven)', 'Rotterdam, Netherlands', 'Netherlands', 'Western Europe', 1.19, 0.22, 2048, 8192, 'active'),
+  (2, 'DR-IE-01', 'Digital Realty DUB10 (Dublin)', 'Dublin, Ireland', 'Ireland', 'Western Europe', 1.18, 0.20, 3072, 12288, 'active'),
+  (2, 'MC-DE-01', 'maincubes FRA01 (Frankfurt)', 'Frankfurt, Germany', 'Germany', 'Western Europe', 1.16, 0.19, 3072, 12288, 'active'),
+  (3, 'MS-SE-01', 'Sweden Central (Gävle-Sandviken)', 'Gävle, Sweden', 'Sweden', 'Nordic region', 1.12, 0.12, 8192, 32768, 'active'),
+  (3, 'MS-NO-02', 'Norway East (Oslo)', 'Oslo, Norway', 'Norway', 'Nordic region', 1.15, 0.16, 6144, 24576, 'active'),
+  (4, 'AWS-SE-01', 'eu-north-1 (Stockholm Katrineholm)', 'Stockholm, Sweden', 'Sweden', 'Nordic region', 1.13, 0.15, 8192, 32768, 'active'),
+  (4, 'AWS-IE-02', 'eu-west-1 (Dublin Clonshaugh)', 'Dublin, Ireland', 'Ireland', 'Western Europe', 1.21, 0.26, 8192, 32768, 'active'),
+  (5, 'GCP-FI-01', 'europe-north1 (Hamina)', 'Hamina, Finland', 'Finland', 'Nordic region', 1.10, 0.08, 8192, 32768, 'active'),
+  (5, 'GCP-NL-01', 'europe-west4 (Eemshaven)', 'Groningen, Netherlands', 'Netherlands', 'Western Europe', 1.12, 0.14, 8192, 32768, 'active')
 on conflict (data_center_code) do update set
   name = excluded.name,
   location = excluded.location,
   status = excluded.status;
 
+-- Workloads Table Setup & Seed Data
+create table if not exists public.workloads (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  cpu_cores integer not null,
+  memory_gb real not null,
+  duration_minutes integer not null,
+  energy_kwh real not null,
+  arrival timestamptz not null default now(),
+  deadline timestamptz not null default (now() + interval '8 hours'),
+  priority text not null check (priority in ('High', 'Medium', 'Low')),
+  data_size_gb real not null default 0,
+  status text not null default 'Pending' check (status in ('Pending', 'Scheduled', 'Completed', 'Failed')),
+  scheduled_time timestamptz,
+  energy_source text,
+  source_allocation_mix text,
+  created_at timestamptz not null default now()
+);
+
+insert into public.workloads (name, priority, cpu_cores, memory_gb, duration_minutes, energy_kwh, data_size_gb, status, arrival, deadline)
+values
+  ('LLM-FineTuning-Llama-3.1-70B-LoRA', 'High', 128, 512, 300, 78.4, 160.0, 'Pending', now(), now() + interval '8 hours'),
+  ('AlphaFold-Protein-Folding-Simulation', 'High', 96, 384, 240, 64.0, 120.0, 'Pending', now() + interval '10 minutes', now() + interval '9 hours'),
+  ('Financial-Derivatives-VaR-Risk-Matrix', 'High', 64, 192, 75, 18.5, 35.0, 'Pending', now() + interval '20 minutes', now() + interval '4 hours'),
+  ('Atmospheric-WRF-Climate-Ensemble-Run', 'High', 128, 512, 360, 95.0, 480.0, 'Pending', now() + interval '30 minutes', now() + interval '12 hours'),
+  ('Suricata-Network-PCAP-Threat-Inspection', 'High', 32, 128, 60, 12.2, 85.0, 'Pending', now() + interval '40 minutes', now() + interval '5 hours'),
+  ('Mistral-Large-Instruction-Distillation', 'High', 64, 256, 180, 46.0, 90.0, 'Pending', now() + interval '50 minutes', now() + interval '8 hours'),
+  ('Apache-Spark-Global-Clickstream-ETL', 'Medium', 64, 256, 120, 28.5, 850.0, 'Pending', now() + interval '60 minutes', now() + interval '10 hours'),
+  ('GeoSpatial-Satellite-Multispectral-Tile-Render', 'Medium', 32, 128, 120, 24.0, 40.0, 'Pending', now() + interval '70 minutes', now() + interval '12 hours'),
+  ('Cryo-EM-Micrograph-3D-Reconstruction', 'Medium', 64, 256, 180, 44.5, 350.0, 'Pending', now() + interval '80 minutes', now() + interval '14 hours'),
+  ('Whisper-v3-Multilingual-Speech-Transcribe', 'Medium', 32, 96, 90, 16.5, 60.0, 'Pending', now() + interval '90 minutes', now() + interval '11 hours'),
+  ('Blender-Cycles-VFX-4K-Raytracing-Batch', 'Medium', 96, 256, 150, 38.0, 180.0, 'Pending', now() + interval '100 minutes', now() + interval '16 hours'),
+  ('E-Commerce-Graph-Collaborative-Filtering', 'Medium', 48, 192, 105, 22.0, 75.0, 'Pending', now() + interval '110 minutes', now() + interval '12 hours'),
+  ('Vector-Embedding-HNSW-Index-Rebuild', 'Medium', 32, 96, 45, 9.8, 85.0, 'Pending', now() + interval '120 minutes', now() + interval '8 hours'),
+  ('Stable-Diffusion-XL-Marketing-Assets-Gen', 'Low', 48, 128, 60, 14.2, 45.0, 'Pending', now() + interval '130 minutes', now() + interval '18 hours'),
+  ('Snowflake-Data-Vault-Nightly-CDC-Merge', 'Low', 32, 128, 90, 15.0, 420.0, 'Pending', now() + interval '140 minutes', now() + interval '20 hours'),
+  ('Nightly-Postgres-OLAP-Materialized-View-Refresh', 'Low', 16, 64, 30, 4.8, 110.0, 'Pending', now() + interval '150 minutes', now() + interval '16 hours'),
+  ('AV1-DASH-Adaptive-Bitrate-Transcoding', 'Low', 32, 64, 60, 11.2, 240.0, 'Pending', now() + interval '160 minutes', now() + interval '22 hours'),
+  ('Elasticsearch-Cold-Tier-Shard-Defragmentation', 'Low', 16, 64, 45, 5.5, 620.0, 'Pending', now() + interval '170 minutes', now() + interval '24 hours'),
+  ('Kubernetes-Container-Image-Trivy-CVE-Scan', 'Low', 24, 48, 40, 6.8, 50.0, 'Pending', now() + interval '180 minutes', now() + interval '18 hours'),
+  ('Database-Offsite-Encrypted-Snapshot-Export', 'Low', 16, 64, 80, 10.4, 950.0, 'Pending', now() + interval '190 minutes', now() + interval '26 hours')
+on conflict do nothing;
 
 alter table public.companies enable row level security;
 alter table public.data_centers enable row level security;
+alter table public.workloads enable row level security;
 
 do $$
 begin
@@ -76,6 +125,14 @@ do $$
 begin
   create policy "Public can read data centers"
     on public.data_centers for select to anon, authenticated using (true);
+exception
+  when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  create policy "Public can read and write workloads"
+    on public.workloads for all to anon, authenticated using (true) with check (true);
 exception
   when duplicate_object then null;
 end $$;

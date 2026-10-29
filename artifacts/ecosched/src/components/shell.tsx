@@ -7,9 +7,26 @@ import type { Company, DataCenter, Workload, SchedulingResult } from '@workspace
 import logo from '@assets/ecosched-logo.png';
 
 export const demoWorkloads: Workload[] = [
-  { id: 'wl-01', name: 'Climate model ensemble', cpu: 72, memoryGb: 48, durationMinutes: 180, energyKwh: 14.6, arrival: '2025-06-08T08:00', deadline: '2025-06-08T18:00', priority: 'high', dataSizeGb: 320 },
-  { id: 'wl-02', name: 'Vision training batch', cpu: 88, memoryGb: 64, durationMinutes: 240, energyKwh: 22.8, arrival: '2025-06-08T09:00', deadline: '2025-06-09T06:00', priority: 'normal', dataSizeGb: 780 },
-  { id: 'wl-03', name: 'Student notebooks', cpu: 34, memoryGb: 16, durationMinutes: 75, energyKwh: 3.1, arrival: '2025-06-08T10:30', deadline: '2025-06-08T16:00', priority: 'low', dataSizeGb: 42 },
+  { id: 'wl-01', name: 'LLM-FineTuning-Llama-3.1-70B-LoRA', cpu: 128, memoryGb: 512, durationMinutes: 300, energyKwh: 78.4, arrival: '2025-06-08T08:00', deadline: '2025-06-08T18:00', priority: 'high', dataSizeGb: 160 },
+  { id: 'wl-02', name: 'AlphaFold-Protein-Folding-Simulation', cpu: 96, memoryGb: 384, durationMinutes: 240, energyKwh: 64.0, arrival: '2025-06-08T08:15', deadline: '2025-06-08T19:00', priority: 'high', dataSizeGb: 120 },
+  { id: 'wl-03', name: 'Financial-Derivatives-VaR-Risk-Matrix', cpu: 64, memoryGb: 192, durationMinutes: 75, energyKwh: 18.5, arrival: '2025-06-08T08:30', deadline: '2025-06-08T14:00', priority: 'high', dataSizeGb: 35 },
+  { id: 'wl-04', name: 'Atmospheric-WRF-Climate-Ensemble-Run', cpu: 128, memoryGb: 512, durationMinutes: 360, energyKwh: 95.0, arrival: '2025-06-08T08:45', deadline: '2025-06-08T22:00', priority: 'high', dataSizeGb: 480 },
+  { id: 'wl-05', name: 'Suricata-Network-PCAP-Threat-Inspection', cpu: 32, memoryGb: 128, durationMinutes: 60, energyKwh: 12.2, arrival: '2025-06-08T09:00', deadline: '2025-06-08T15:00', priority: 'high', dataSizeGb: 85 },
+  { id: 'wl-06', name: 'Mistral-Large-Instruction-Distillation', cpu: 64, memoryGb: 256, durationMinutes: 180, energyKwh: 46.0, arrival: '2025-06-08T09:15', deadline: '2025-06-08T18:00', priority: 'high', dataSizeGb: 90 },
+  { id: 'wl-07', name: 'Apache-Spark-Global-Clickstream-ETL', cpu: 64, memoryGb: 256, durationMinutes: 120, energyKwh: 28.5, arrival: '2025-06-08T09:30', deadline: '2025-06-08T20:00', priority: 'normal', dataSizeGb: 850 },
+  { id: 'wl-08', name: 'GeoSpatial-Satellite-Multispectral-Tile-Render', cpu: 32, memoryGb: 128, durationMinutes: 120, energyKwh: 24.0, arrival: '2025-06-08T09:45', deadline: '2025-06-08T22:00', priority: 'normal', dataSizeGb: 40 },
+  { id: 'wl-09', name: 'Cryo-EM-Micrograph-3D-Reconstruction', cpu: 64, memoryGb: 256, durationMinutes: 180, energyKwh: 44.5, arrival: '2025-06-08T10:00', deadline: '2025-06-09T00:00', priority: 'normal', dataSizeGb: 350 },
+  { id: 'wl-10', name: 'Whisper-v3-Multilingual-Speech-Transcribe', cpu: 32, memoryGb: 96, durationMinutes: 90, energyKwh: 16.5, arrival: '2025-06-08T10:15', deadline: '2025-06-08T21:00', priority: 'normal', dataSizeGb: 60 },
+  { id: 'wl-11', name: 'Blender-Cycles-VFX-4K-Raytracing-Batch', cpu: 96, memoryGb: 256, durationMinutes: 150, energyKwh: 38.0, arrival: '2025-06-08T10:30', deadline: '2025-06-09T02:00', priority: 'normal', dataSizeGb: 180 },
+  { id: 'wl-12', name: 'E-Commerce-Graph-Collaborative-Filtering', cpu: 48, memoryGb: 192, durationMinutes: 105, energyKwh: 22.0, arrival: '2025-06-08T10:45', deadline: '2025-06-08T22:00', priority: 'normal', dataSizeGb: 75 },
+  { id: 'wl-13', name: 'Vector-Embedding-HNSW-Index-Rebuild', cpu: 32, memoryGb: 96, durationMinutes: 45, energyKwh: 9.8, arrival: '2025-06-08T11:00', deadline: '2025-06-08T18:00', priority: 'normal', dataSizeGb: 85 },
+  { id: 'wl-14', name: 'Stable-Diffusion-XL-Marketing-Assets-Gen', cpu: 48, memoryGb: 128, durationMinutes: 60, energyKwh: 14.2, arrival: '2025-06-08T11:15', deadline: '2025-06-09T04:00', priority: 'low', dataSizeGb: 45 },
+  { id: 'wl-15', name: 'Snowflake-Data-Vault-Nightly-CDC-Merge', cpu: 32, memoryGb: 128, durationMinutes: 90, energyKwh: 15.0, arrival: '2025-06-08T11:30', deadline: '2025-06-09T06:00', priority: 'low', dataSizeGb: 420 },
+  { id: 'wl-16', name: 'Nightly-Postgres-OLAP-Materialized-View-Refresh', cpu: 16, memoryGb: 64, durationMinutes: 30, energyKwh: 4.8, arrival: '2025-06-08T12:00', deadline: '2025-06-09T02:00', priority: 'low', dataSizeGb: 110 },
+  { id: 'wl-17', name: 'AV1-DASH-Adaptive-Bitrate-Transcoding', cpu: 32, memoryGb: 64, durationMinutes: 60, energyKwh: 11.2, arrival: '2025-06-08T12:30', deadline: '2025-06-09T08:00', priority: 'low', dataSizeGb: 240 },
+  { id: 'wl-18', name: 'Elasticsearch-Cold-Tier-Shard-Defragmentation', cpu: 16, memoryGb: 64, durationMinutes: 45, energyKwh: 5.5, arrival: '2025-06-08T13:00', deadline: '2025-06-09T10:00', priority: 'low', dataSizeGb: 620 },
+  { id: 'wl-19', name: 'Kubernetes-Container-Image-Trivy-CVE-Scan', cpu: 24, memoryGb: 48, durationMinutes: 40, energyKwh: 6.8, arrival: '2025-06-08T13:30', deadline: '2025-06-09T04:00', priority: 'low', dataSizeGb: 50 },
+  { id: 'wl-20', name: 'Database-Offsite-Encrypted-Snapshot-Export', cpu: 16, memoryGb: 64, durationMinutes: 80, energyKwh: 10.4, arrival: '2025-06-08T14:00', deadline: '2025-06-09T12:00', priority: 'low', dataSizeGb: 950 },
 ];
 
 type WorkspaceValue = { companies: Company[]; dataCenters: DataCenter[]; company?: Company; dataCenter?: DataCenter; companyId: string; dataCenterId: string; setCompanyId: (id: string) => void; setDataCenterId: (id: string) => void; workloads: Workload[]; setWorkloads: (w: Workload[]) => void; result?: SchedulingResult; setResult: (r?: SchedulingResult) => void; };

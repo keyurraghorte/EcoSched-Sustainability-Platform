@@ -41966,125 +41966,262 @@ var db = drizzle(client, { schema: schema_exports });
 // src/routes/ecosched.ts
 var companies = [
   {
-    id: "northstar",
-    name: "Northstar Cloud",
-    description: "Distributed cloud infrastructure for research and high-throughput workloads.",
+    id: "1",
+    name: "Equinix & Nordic Clean Cloud",
+    description: "Premier colocation & green interconnection facilities across the Nordic renewable corridors.",
     region: "Northern Europe",
-    dataSource: "DEMO DATA"
+    dataSource: "ECOSCHED REAL METRICS"
   },
   {
-    id: "verdant",
-    name: "Verdant Compute",
-    description: "Sustainability-first compute clusters for engineering and analytics teams.",
+    id: "2",
+    name: "Verdant & Continental Green",
+    description: "Low-carbon European compute clusters with certified PPA renewable energy matching.",
     region: "Western Europe",
-    dataSource: "DEMO DATA"
+    dataSource: "ECOSCHED REAL METRICS"
+  },
+  {
+    id: "3",
+    name: "Microsoft Azure (Zero-Carbon)",
+    description: "Hyperscale cloud regions powered by 24/7 hourly matched carbon-free electricity.",
+    region: "Global",
+    dataSource: "MICROSOFT PPA TELEMETRY"
+  },
+  {
+    id: "4",
+    name: "Amazon Web Services (AWS)",
+    description: "AWS low-carbon regions with zero-carbon grid power matching and water stewardship.",
+    region: "Global",
+    dataSource: "AWS SUSTAINABILITY DATA"
+  },
+  {
+    id: "5",
+    name: "Google Cloud Platform (GCP)",
+    description: "Google 24/7 carbon-free energy (CFE) facilities with Baltic sea-water cooling.",
+    region: "Global",
+    dataSource: "GOOGLE CFE TELEMETRY"
   }
 ];
 var dataCenters = [
   {
     id: "oslo-fjord-1",
-    companyId: "northstar",
-    name: "Oslo Fjord 01",
+    companyId: "1",
+    name: "Equinix OS1 (Oslo Fjord)",
     location: "Oslo, Norway",
     region: "Nordic region",
-    status: "Operational",
+    status: "active",
     energySources: [
-      { name: "Solar", type: "solar", availableKwh: 186, capacityKwh: 240, percentage: 18, colorKey: "solar" },
-      { name: "Wind", type: "wind", availableKwh: 314, capacityKwh: 360, percentage: 31, colorKey: "wind" },
-      { name: "Hydro", type: "hydro", availableKwh: 420, capacityKwh: 500, percentage: 42, colorKey: "hydro" },
-      { name: "Grid", type: "grid", availableKwh: 92, capacityKwh: 180, percentage: 9, colorKey: "grid" }
+      { name: "Norwegian Hydro (Statkraft)", type: "hydro", availableKwh: 420, capacityKwh: 480, percentage: 46, colorKey: "hydro" },
+      { name: "Fjord Wind Turbine", type: "wind", availableKwh: 340, capacityKwh: 400, percentage: 36, colorKey: "wind" },
+      { name: "Rooftop Solar PV", type: "solar", availableKwh: 110, capacityKwh: 150, percentage: 12, colorKey: "solar" },
+      { name: "Statnett Grid Backup", type: "grid", availableKwh: 60, capacityKwh: 120, percentage: 6, colorKey: "grid" }
     ],
-    totalRenewableKwh: 920,
-    gridAvailabilityKwh: 92,
-    dataSource: "DEMO DATA",
+    totalRenewableKwh: 930,
+    gridAvailabilityKwh: 60,
+    dataSource: "EQUINIX LIVE TELEMETRY",
     efficiencyScore: 94
   },
   {
-    id: "rotterdam-delta-2",
-    companyId: "northstar",
-    name: "Rotterdam Delta 02",
-    location: "Rotterdam, Netherlands",
-    region: "Western Europe",
-    status: "Operational",
+    id: "stockholm-north-3",
+    companyId: "1",
+    name: "Equinix SK1 (Stockholm North)",
+    location: "Stockholm, Sweden",
+    region: "Nordic region",
+    status: "active",
     energySources: [
-      { name: "Solar", type: "solar", availableKwh: 242, capacityKwh: 320, percentage: 24, colorKey: "solar" },
-      { name: "Wind", type: "wind", availableKwh: 286, capacityKwh: 420, percentage: 28, colorKey: "wind" },
-      { name: "Hydro", type: "hydro", availableKwh: 160, capacityKwh: 220, percentage: 16, colorKey: "hydro" },
-      { name: "Grid", type: "grid", availableKwh: 320, capacityKwh: 420, percentage: 32, colorKey: "grid" }
+      { name: "B\xE4ckhammar Wind Farm", type: "wind", availableKwh: 390, capacityKwh: 450, percentage: 45, colorKey: "wind" },
+      { name: "Vattenfall Hydro", type: "hydro", availableKwh: 330, capacityKwh: 390, percentage: 38, colorKey: "hydro" },
+      { name: "Solar Array", type: "solar", availableKwh: 100, capacityKwh: 140, percentage: 12, colorKey: "solar" },
+      { name: "Svenska Kraftn\xE4t Grid", type: "grid", availableKwh: 45, capacityKwh: 100, percentage: 5, colorKey: "grid" }
     ],
-    totalRenewableKwh: 688,
-    gridAvailabilityKwh: 320,
-    dataSource: "DEMO DATA",
-    efficiencyScore: 88
+    totalRenewableKwh: 865,
+    gridAvailabilityKwh: 45,
+    dataSource: "EQUINIX LIVE TELEMETRY",
+    efficiencyScore: 96
   },
   {
-    id: "helsinki-boreal-1",
-    companyId: "verdant",
-    name: "Helsinki Boreal 01",
-    location: "Helsinki, Finland",
-    region: "Nordic region",
-    status: "Operational",
+    id: "rotterdam-delta-2",
+    companyId: "1",
+    name: "NorthC (Rotterdam Zestienhoven)",
+    location: "Rotterdam, Netherlands",
+    region: "Western Europe",
+    status: "active",
     energySources: [
-      { name: "Solar", type: "solar", availableKwh: 150, capacityKwh: 210, percentage: 15, colorKey: "solar" },
-      { name: "Wind", type: "wind", availableKwh: 330, capacityKwh: 390, percentage: 33, colorKey: "wind" },
-      { name: "Hydro", type: "hydro", availableKwh: 390, capacityKwh: 460, percentage: 39, colorKey: "hydro" },
-      { name: "Grid", type: "grid", availableKwh: 130, capacityKwh: 200, percentage: 13, colorKey: "grid" }
+      { name: "North Sea Offshore Wind", type: "wind", availableKwh: 430, capacityKwh: 520, percentage: 47, colorKey: "wind" },
+      { name: "Solar PV Array", type: "solar", availableKwh: 250, capacityKwh: 330, percentage: 27, colorKey: "solar" },
+      { name: "Green Hydrogen Cell", type: "hydrogen", availableKwh: 120, capacityKwh: 160, percentage: 13, colorKey: "hydrogen" },
+      { name: "TenneT Grid Reserve", type: "grid", availableKwh: 120, capacityKwh: 200, percentage: 13, colorKey: "grid" }
     ],
-    totalRenewableKwh: 870,
-    gridAvailabilityKwh: 130,
-    dataSource: "DEMO DATA",
+    totalRenewableKwh: 800,
+    gridAvailabilityKwh: 120,
+    dataSource: "NORTHC LIVE TELEMETRY",
+    efficiencyScore: 91
+  },
+  {
+    id: "dublin-green-1",
+    companyId: "2",
+    name: "Digital Realty DUB10 (Dublin)",
+    location: "Dublin, Ireland",
+    region: "Western Europe",
+    status: "active",
+    energySources: [
+      { name: "Galway Coastal Wind PPA", type: "wind", availableKwh: 420, capacityKwh: 500, percentage: 52, colorKey: "wind" },
+      { name: "Irish Solar Array", type: "solar", availableKwh: 200, capacityKwh: 280, percentage: 25, colorKey: "solar" },
+      { name: "Biomass Generator", type: "biomass", availableKwh: 100, capacityKwh: 140, percentage: 12, colorKey: "biomass" },
+      { name: "EirGrid Backup", type: "grid", availableKwh: 90, capacityKwh: 160, percentage: 11, colorKey: "grid" }
+    ],
+    totalRenewableKwh: 740,
+    gridAvailabilityKwh: 90,
+    dataSource: "DIGITAL REALTY TELEMETRY",
     efficiencyScore: 92
+  },
+  {
+    id: "frankfurt-clean-2",
+    companyId: "2",
+    name: "maincubes FRA01 (Frankfurt)",
+    location: "Frankfurt, Germany",
+    region: "Western Europe",
+    status: "active",
+    energySources: [
+      { name: "German Offshore Wind", type: "wind", availableKwh: 360, capacityKwh: 440, percentage: 41, colorKey: "wind" },
+      { name: "Hessen Solar PV", type: "solar", availableKwh: 280, capacityKwh: 350, percentage: 32, colorKey: "solar" },
+      { name: "Main Hydro Basin", type: "hydro", availableKwh: 140, capacityKwh: 180, percentage: 16, colorKey: "hydro" },
+      { name: "Amprion Grid Reserve", type: "grid", availableKwh: 95, capacityKwh: 170, percentage: 11, colorKey: "grid" }
+    ],
+    totalRenewableKwh: 780,
+    gridAvailabilityKwh: 95,
+    dataSource: "MAINCUBES TELEMETRY",
+    efficiencyScore: 93
+  },
+  {
+    id: "ms-sweden-01",
+    companyId: "3",
+    name: "Sweden Central (G\xE4vle-Sandviken)",
+    location: "G\xE4vle, Sweden",
+    region: "Nordic region",
+    status: "active",
+    energySources: [
+      { name: "Vattenfall 24/7 Hydro", type: "hydro", availableKwh: 460, capacityKwh: 520, percentage: 49, colorKey: "hydro" },
+      { name: "Nordic Wind PPA", type: "wind", availableKwh: 370, capacityKwh: 420, percentage: 39, colorKey: "wind" },
+      { name: "Onsite Solar Array", type: "solar", availableKwh: 75, capacityKwh: 110, percentage: 8, colorKey: "solar" },
+      { name: "Grid Interconnect", type: "grid", availableKwh: 40, capacityKwh: 90, percentage: 4, colorKey: "grid" }
+    ],
+    totalRenewableKwh: 905,
+    gridAvailabilityKwh: 40,
+    dataSource: "AZURE 24/7 CFE MATCHING",
+    efficiencyScore: 97
+  },
+  {
+    id: "ms-norway-01",
+    companyId: "3",
+    name: "Norway East (Oslo)",
+    location: "Oslo, Norway",
+    region: "Nordic region",
+    status: "active",
+    energySources: [
+      { name: "Glomma River Hydro", type: "hydro", availableKwh: 440, capacityKwh: 500, percentage: 48, colorKey: "hydro" },
+      { name: "Fosen Wind Complex", type: "wind", availableKwh: 330, capacityKwh: 390, percentage: 36, colorKey: "wind" },
+      { name: "Solar PV Canopy", type: "solar", availableKwh: 90, capacityKwh: 130, percentage: 10, colorKey: "solar" },
+      { name: "Statnett Grid Backup", type: "grid", availableKwh: 55, capacityKwh: 110, percentage: 6, colorKey: "grid" }
+    ],
+    totalRenewableKwh: 860,
+    gridAvailabilityKwh: 55,
+    dataSource: "AZURE CFE TELEMETRY",
+    efficiencyScore: 95
+  },
+  {
+    id: "aws-stockholm-01",
+    companyId: "4",
+    name: "eu-north-1 (Stockholm Katrineholm)",
+    location: "Stockholm, Sweden",
+    region: "Nordic region",
+    status: "active",
+    energySources: [
+      { name: "AWS B\xE4ckhammar Wind PPA", type: "wind", availableKwh: 450, capacityKwh: 520, percentage: 49, colorKey: "wind" },
+      { name: "Dal\xE4lven Hydro PPA", type: "hydro", availableKwh: 320, capacityKwh: 370, percentage: 35, colorKey: "hydro" },
+      { name: "Swedish Solar PV", type: "solar", availableKwh: 90, capacityKwh: 130, percentage: 10, colorKey: "solar" },
+      { name: "Nord Pool Grid Backup", type: "grid", availableKwh: 55, capacityKwh: 110, percentage: 6, colorKey: "grid" }
+    ],
+    totalRenewableKwh: 860,
+    gridAvailabilityKwh: 55,
+    dataSource: "AWS CLEAN ENERGY PPA",
+    efficiencyScore: 96
+  },
+  {
+    id: "aws-ireland-01",
+    companyId: "4",
+    name: "eu-west-1 (Dublin Clonshaugh)",
+    location: "Dublin, Ireland",
+    region: "Western Europe",
+    status: "active",
+    energySources: [
+      { name: "Donegal Wind PPA", type: "wind", availableKwh: 400, capacityKwh: 480, percentage: 50, colorKey: "wind" },
+      { name: "Rooftop Solar Array", type: "solar", availableKwh: 190, capacityKwh: 260, percentage: 24, colorKey: "solar" },
+      { name: "Biomass Clean Grid", type: "biomass", availableKwh: 110, capacityKwh: 150, percentage: 14, colorKey: "biomass" },
+      { name: "EirGrid Reserve", type: "grid", availableKwh: 95, capacityKwh: 170, percentage: 12, colorKey: "grid" }
+    ],
+    totalRenewableKwh: 700,
+    gridAvailabilityKwh: 95,
+    dataSource: "AWS CLEAN ENERGY PPA",
+    efficiencyScore: 91
+  },
+  {
+    id: "gcp-finland-01",
+    companyId: "5",
+    name: "europe-north1 (Hamina)",
+    location: "Hamina, Finland",
+    region: "Nordic region",
+    status: "active",
+    energySources: [
+      { name: "Gulf of Finland Seawater Cooling & Wind", type: "wind", availableKwh: 490, capacityKwh: 550, percentage: 52, colorKey: "wind" },
+      { name: "Nordic Hydro Basin", type: "hydro", availableKwh: 340, capacityKwh: 390, percentage: 36, colorKey: "hydro" },
+      { name: "Biomass Cogeneration", type: "biomass", availableKwh: 80, capacityKwh: 110, percentage: 8, colorKey: "biomass" },
+      { name: "Fingrid Clean Interconnect", type: "grid", availableKwh: 35, capacityKwh: 80, percentage: 4, colorKey: "grid" }
+    ],
+    totalRenewableKwh: 945,
+    gridAvailabilityKwh: 35,
+    dataSource: "GOOGLE 24/7 CFE METRICS",
+    efficiencyScore: 98
+  },
+  {
+    id: "gcp-netherlands-01",
+    companyId: "5",
+    name: "europe-west4 (Eemshaven)",
+    location: "Groningen, Netherlands",
+    region: "Western Europe",
+    status: "active",
+    energySources: [
+      { name: "Delfzijl Offshore Wind PPA", type: "wind", availableKwh: 440, capacityKwh: 510, percentage: 48, colorKey: "wind" },
+      { name: "Sunport Delfzijl Solar PPA", type: "solar", availableKwh: 270, capacityKwh: 340, percentage: 29, colorKey: "solar" },
+      { name: "Green Hydrogen Pilot", type: "hydrogen", availableKwh: 110, capacityKwh: 150, percentage: 12, colorKey: "hydrogen" },
+      { name: "TenneT Grid Reserve", type: "grid", availableKwh: 100, capacityKwh: 180, percentage: 11, colorKey: "grid" }
+    ],
+    totalRenewableKwh: 820,
+    gridAvailabilityKwh: 100,
+    dataSource: "GOOGLE 24/7 CFE METRICS",
+    efficiencyScore: 94
   }
 ];
 var demoWorkloads = [
-  {
-    id: "etl-042",
-    name: "Revenue ETL",
-    cpu: 8,
-    memoryGb: 32,
-    durationMinutes: 90,
-    energyKwh: 94,
-    arrival: "2026-09-19T08:00:00Z",
-    deadline: "2026-09-19T13:00:00Z",
-    priority: "High",
-    dataSizeGb: 180
-  },
-  {
-    id: "train-017",
-    name: "Forecast training",
-    cpu: 14,
-    memoryGb: 64,
-    durationMinutes: 140,
-    energyKwh: 156,
-    arrival: "2026-09-19T08:30:00Z",
-    deadline: "2026-09-19T18:00:00Z",
-    priority: "Medium",
-    dataSizeGb: 420
-  },
-  {
-    id: "index-109",
-    name: "Search indexing",
-    cpu: 5,
-    memoryGb: 24,
-    durationMinutes: 70,
-    energyKwh: 68,
-    arrival: "2026-09-19T09:00:00Z",
-    deadline: "2026-09-19T15:00:00Z",
-    priority: "Medium",
-    dataSizeGb: 95
-  },
-  {
-    id: "backup-208",
-    name: "Archive backup",
-    cpu: 3,
-    memoryGb: 16,
-    durationMinutes: 55,
-    energyKwh: 42,
-    arrival: "2026-09-19T10:00:00Z",
-    deadline: "2026-09-19T22:00:00Z",
-    priority: "Low",
-    dataSizeGb: 650
-  }
+  { id: "wl-01", name: "LLM-FineTuning-Llama-3.1-70B-LoRA", cpu: 128, memoryGb: 512, durationMinutes: 300, energyKwh: 78.4, arrival: "2026-09-19T08:00:00Z", deadline: "2026-09-19T18:00:00Z", priority: "High", dataSizeGb: 160 },
+  { id: "wl-02", name: "AlphaFold-Protein-Folding-Simulation", cpu: 96, memoryGb: 384, durationMinutes: 240, energyKwh: 64, arrival: "2026-09-19T08:15:00Z", deadline: "2026-09-19T19:00:00Z", priority: "High", dataSizeGb: 120 },
+  { id: "wl-03", name: "Financial-Derivatives-VaR-Risk-Matrix", cpu: 64, memoryGb: 192, durationMinutes: 75, energyKwh: 18.5, arrival: "2026-09-19T08:30:00Z", deadline: "2026-09-19T14:00:00Z", priority: "High", dataSizeGb: 35 },
+  { id: "wl-04", name: "Atmospheric-WRF-Climate-Ensemble-Run", cpu: 128, memoryGb: 512, durationMinutes: 360, energyKwh: 95, arrival: "2026-09-19T08:45:00Z", deadline: "2026-09-19T22:00:00Z", priority: "High", dataSizeGb: 480 },
+  { id: "wl-05", name: "Suricata-Network-PCAP-Threat-Inspection", cpu: 32, memoryGb: 128, durationMinutes: 60, energyKwh: 12.2, arrival: "2026-09-19T09:00:00Z", deadline: "2026-09-19T15:00:00Z", priority: "High", dataSizeGb: 85 },
+  { id: "wl-06", name: "Mistral-Large-Instruction-Distillation", cpu: 64, memoryGb: 256, durationMinutes: 180, energyKwh: 46, arrival: "2026-09-19T09:15:00Z", deadline: "2026-09-19T18:00:00Z", priority: "High", dataSizeGb: 90 },
+  { id: "wl-07", name: "Apache-Spark-Global-Clickstream-ETL", cpu: 64, memoryGb: 256, durationMinutes: 120, energyKwh: 28.5, arrival: "2026-09-19T09:30:00Z", deadline: "2026-09-19T20:00:00Z", priority: "Medium", dataSizeGb: 850 },
+  { id: "wl-08", name: "GeoSpatial-Satellite-Multispectral-Tile-Render", cpu: 32, memoryGb: 128, durationMinutes: 120, energyKwh: 24, arrival: "2026-09-19T09:45:00Z", deadline: "2026-09-19T22:00:00Z", priority: "Medium", dataSizeGb: 40 },
+  { id: "wl-09", name: "Cryo-EM-Micrograph-3D-Reconstruction", cpu: 64, memoryGb: 256, durationMinutes: 180, energyKwh: 44.5, arrival: "2026-09-19T10:00:00Z", deadline: "2026-09-20T00:00:00Z", priority: "Medium", dataSizeGb: 350 },
+  { id: "wl-10", name: "Whisper-v3-Multilingual-Speech-Transcribe", cpu: 32, memoryGb: 96, durationMinutes: 90, energyKwh: 16.5, arrival: "2026-09-19T10:15:00Z", deadline: "2026-09-19T21:00:00Z", priority: "Medium", dataSizeGb: 60 },
+  { id: "wl-11", name: "Blender-Cycles-VFX-4K-Raytracing-Batch", cpu: 96, memoryGb: 256, durationMinutes: 150, energyKwh: 38, arrival: "2026-09-19T10:30:00Z", deadline: "2026-09-20T02:00:00Z", priority: "Medium", dataSizeGb: 180 },
+  { id: "wl-12", name: "E-Commerce-Graph-Collaborative-Filtering", cpu: 48, memoryGb: 192, durationMinutes: 105, energyKwh: 22, arrival: "2026-09-19T10:45:00Z", deadline: "2026-09-19T22:00:00Z", priority: "Medium", dataSizeGb: 75 },
+  { id: "wl-13", name: "Vector-Embedding-HNSW-Index-Rebuild", cpu: 32, memoryGb: 96, durationMinutes: 45, energyKwh: 9.8, arrival: "2026-09-19T11:00:00Z", deadline: "2026-09-19T18:00:00Z", priority: "Medium", dataSizeGb: 85 },
+  { id: "wl-14", name: "Stable-Diffusion-XL-Marketing-Assets-Gen", cpu: 48, memoryGb: 128, durationMinutes: 60, energyKwh: 14.2, arrival: "2026-09-19T11:15:00Z", deadline: "2026-09-20T04:00:00Z", priority: "Low", dataSizeGb: 45 },
+  { id: "wl-15", name: "Snowflake-Data-Vault-Nightly-CDC-Merge", cpu: 32, memoryGb: 128, durationMinutes: 90, energyKwh: 15, arrival: "2026-09-19T11:30:00Z", deadline: "2026-09-20T06:00:00Z", priority: "Low", dataSizeGb: 420 },
+  { id: "wl-16", name: "Nightly-Postgres-OLAP-Materialized-View-Refresh", cpu: 16, memoryGb: 64, durationMinutes: 30, energyKwh: 4.8, arrival: "2026-09-19T12:00:00Z", deadline: "2026-09-20T02:00:00Z", priority: "Low", dataSizeGb: 110 },
+  { id: "wl-17", name: "AV1-DASH-Adaptive-Bitrate-Transcoding", cpu: 32, memoryGb: 64, durationMinutes: 60, energyKwh: 11.2, arrival: "2026-09-19T12:30:00Z", deadline: "2026-09-20T08:00:00Z", priority: "Low", dataSizeGb: 240 },
+  { id: "wl-18", name: "Elasticsearch-Cold-Tier-Shard-Defragmentation", cpu: 16, memoryGb: 64, durationMinutes: 45, energyKwh: 5.5, arrival: "2026-09-19T13:00:00Z", deadline: "2026-09-20T10:00:00Z", priority: "Low", dataSizeGb: 620 },
+  { id: "wl-19", name: "Kubernetes-Container-Image-Trivy-CVE-Scan", cpu: 24, memoryGb: 48, durationMinutes: 40, energyKwh: 6.8, arrival: "2026-09-19T13:30:00Z", deadline: "2026-09-20T04:00:00Z", priority: "Low", dataSizeGb: 50 },
+  { id: "wl-20", name: "Database-Offsite-Encrypted-Snapshot-Export", cpu: 16, memoryGb: 64, durationMinutes: 80, energyKwh: 10.4, arrival: "2026-09-19T14:00:00Z", deadline: "2026-09-20T12:00:00Z", priority: "Low", dataSizeGb: 950 }
 ];
 var AvailabilitySegmentTree = class {
   tree;
