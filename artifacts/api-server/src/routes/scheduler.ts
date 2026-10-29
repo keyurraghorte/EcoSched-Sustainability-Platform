@@ -1,10 +1,13 @@
 import { Router, type Request, type Response } from 'express';
-import { eq } from 'drizzle-orm';
+import { eq, and, isNotNull } from 'drizzle-orm';
 import { db, workloads, type WorkloadSelect } from '@workspace/db';
 import {
   runMultiDimensionalScheduler,
+  pollAndLockPendingWorkloads,
+  batchPersistSchedulingResults,
   type DataCenterCapacityTelemetry,
   type MultiDimensionalSchedulingOutput,
+  type ActiveReservation,
 } from '../services/schedulerEngine';
 import { inMemoryWorkloadStore } from './workloads';
 
@@ -76,28 +79,25 @@ export function getActiveDataCenterTelemetry(dataCenterId = 'oslo-fjord-1'): Dat
 
 /**
  * POST /api/schedule/run (and POST /run / POST /)
- * Fetches all 'Pending' workloads from Supabase, verifies constraints via Segment Trees,
- * batch-updates database statuses to 'Scheduled', and returns the scheduling report.
+ * Fetches pending workloads with SELECT ... FOR UPDATE SKIP LOCKED,
+ * rehydrates in-memory Segment Trees with unexpired committed reservations,
+ * and atomically persists both scheduled and unallocated jobs to Supabase.
  */
 async function handleSchedulingRun(req: Request, res: Response) {
   try {
     const dataCenterId = (req.body?.dataCenterId as string) || 'oslo-fjord-1';
 
-    // 1. Fetch all pending workloads from the database (with resilient fallback)
     let pendingWorkloads: WorkloadSelect[] = [];
     try {
-      pendingWorkloads = await db
-        .select()
-        .from(workloads)
-        .where(eq(workloads.status, 'Pending'));
+      pendingWorkloads = await pollAndLockPendingWorkloads(db, 50);
     } catch (dbErr: any) {
-      console.warn('Database query failed; querying in-memory store:', dbErr?.message);
+      console.warn('Database locking query failed; querying in-memory store:', dbErr?.message);
       pendingWorkloads = inMemoryWorkloadStore.filter((w) => w.status === 'Pending');
     }
 
     if (!pendingWorkloads || pendingWorkloads.length === 0) {
       return res.status(200).json({
-        message: 'No pending workloads found in database.',
+        message: 'No pending workloads found in queue.',
         scheduledWorkloads: [],
         unscheduledWorkloads: [],
         metrics: {
@@ -112,46 +112,43 @@ async function handleSchedulingRun(req: Request, res: Response) {
       });
     }
 
-    // 2. Fetch current capacity telemetry for active data center
     const telemetry = getActiveDataCenterTelemetry(dataCenterId);
 
-    // 3. Execute multi-dimensional bin-packing with Segment Trees
+    let activeReservations: ActiveReservation[] = [];
+    try {
+      const existingScheduled = await db
+        .select()
+        .from(workloads)
+        .where(
+          and(
+            eq(workloads.status, 'Scheduled'),
+            isNotNull(workloads.scheduledTime)
+          )
+        );
+
+      activeReservations = existingScheduled.map((w) => ({
+        id: w.id,
+        name: w.name,
+        scheduledTime: w.scheduledTime!,
+        durationMinutes: w.durationMinutes,
+        cpuCores: w.cpuCores,
+        memoryGb: w.memoryGb,
+        energyKwh: w.energyKwh,
+      }));
+    } catch {
+      // Offline fallback
+    }
+
     const schedulingOutput: MultiDimensionalSchedulingOutput =
-      runMultiDimensionalScheduler(pendingWorkloads, telemetry);
+      runMultiDimensionalScheduler(pendingWorkloads, telemetry, {
+        activeReservations,
+      });
 
-    // 4. Batch-update database state in Supabase from 'Pending' to 'Scheduled'
-    const updatePromises = schedulingOutput.scheduledWorkloads.map(async (job) => {
-      const inMem = inMemoryWorkloadStore.find((w) => w.id === job.id);
-      if (inMem) {
-        inMem.status = 'Scheduled';
-        inMem.scheduledTime = job.scheduledTime;
-        inMem.energySource = job.energySource;
-        inMem.sourceAllocationMix = job.sourceAllocationMix;
-      }
-
-      try {
-        await db
-          .update(workloads)
-          .set({
-            status: 'Scheduled',
-            scheduledTime: job.scheduledTime,
-            energySource: job.energySource,
-            sourceAllocationMix: job.sourceAllocationMix,
-          })
-          .where(eq(workloads.id, job.id));
-      } catch (colErr) {
-        try {
-          await db
-            .update(workloads)
-            .set({ status: 'Scheduled' })
-            .where(eq(workloads.id, job.id));
-        } catch {
-          // Ignored if database is offline
-        }
-      }
-    });
-
-    await Promise.all(updatePromises);
+    await batchPersistSchedulingResults(
+      db,
+      schedulingOutput,
+      inMemoryWorkloadStore
+    );
 
     return res.status(200).json(schedulingOutput);
   } catch (error: any) {

@@ -1,11 +1,16 @@
-import { eq } from 'drizzle-orm';
+import { eq, and, isNotNull } from 'drizzle-orm';
 import { db, workloads, type WorkloadSelect } from '@workspace/db';
 import {
   AvailabilitySegmentTree,
   calculateWeightedScore,
+  rehydrateDataCenterTrees,
+  pollAndLockPendingWorkloads,
+  batchPersistSchedulingResults,
   type DataCenterCapacityTelemetry,
   type ScheduledWorkloadItem,
   type UnscheduledWorkloadItem,
+  type ActiveReservation,
+  type StructuredFailureReason,
 } from '../services/schedulerEngine';
 import { inMemoryWorkloadStore } from '../routes/workloads';
 import { env } from '../config/env';
@@ -288,16 +293,38 @@ export async function executeCronPipelineNow(): Promise<CronRunResult> {
     ACTIVE_DATA_CENTERS.map((dc) => buildDataCenterTelemetry(dc))
   );
 
-  // Step 2: Query all 'Pending' workloads from Supabase (with resilient queue fallback)
+  // Step 2: Query pending workloads with row-level locking (SELECT ... FOR UPDATE SKIP LOCKED)
   let pendingWorkloads: WorkloadSelect[] = [];
   try {
-    pendingWorkloads = await db
+    pendingWorkloads = await pollAndLockPendingWorkloads(db, 100);
+  } catch (err: any) {
+    console.warn('[EcoSched Cron] Database locking query failed; using in-memory store:', err?.message);
+    pendingWorkloads = inMemoryWorkloadStore.filter((w) => w.status === 'Pending');
+  }
+
+  // Rehydrate existing active, unexpired reservations from Supabase
+  let activeReservations: ActiveReservation[] = [];
+  try {
+    const rawActive = await db
       .select()
       .from(workloads)
-      .where(eq(workloads.status, 'Pending'));
+      .where(
+        and(
+          eq(workloads.status, 'Scheduled'),
+          isNotNull(workloads.scheduledTime)
+        )
+      );
+    activeReservations = rawActive.map((w) => ({
+      id: w.id,
+      name: w.name,
+      scheduledTime: w.scheduledTime!,
+      durationMinutes: w.durationMinutes,
+      cpuCores: w.cpuCores,
+      memoryGb: w.memoryGb,
+      energyKwh: w.energyKwh,
+    }));
   } catch (err: any) {
-    console.warn('[EcoSched Cron] Database query failed; using in-memory store:', err?.message);
-    pendingWorkloads = inMemoryWorkloadStore.filter((w) => w.status === 'Pending');
+    console.warn('[EcoSched Cron] Could not query active reservations for rehydration:', err?.message);
   }
 
   if (pendingWorkloads.length === 0) {
@@ -331,7 +358,7 @@ export async function executeCronPipelineNow(): Promise<CronRunResult> {
     (a, b) => a.carbonIntensityGPerKwh - b.carbonIntensityGPerKwh
   );
 
-  // Initialize Segment Trees for each facility to support simultaneous deduction
+  // Initialize and Rehydrate Segment Trees for each facility with active reservations
   const facilityTrees = new Map<
     string,
     {
@@ -343,11 +370,12 @@ export async function executeCronPipelineNow(): Promise<CronRunResult> {
   >();
 
   for (const snap of rankedFacilities) {
+    const rehydrated = rehydrateDataCenterTrees(snap.telemetry, activeReservations);
     facilityTrees.set(snap.dataCenter.id, {
       snapshot: snap,
-      energyTree: new AvailabilitySegmentTree(snap.telemetry.renewableHeadroomKwh),
-      cpuTree: new AvailabilitySegmentTree(snap.telemetry.availableCpuCores),
-      ramTree: new AvailabilitySegmentTree(snap.telemetry.availableRamGb),
+      energyTree: rehydrated.energyTree,
+      cpuTree: rehydrated.cpuTree,
+      ramTree: rehydrated.ramTree,
     });
   }
 
@@ -493,6 +521,21 @@ export async function executeCronPipelineNow(): Promise<CronRunResult> {
     }
 
     if (!placed) {
+      const nowMs = Date.now();
+      const deadlineTime = new Date(job.deadline).getTime();
+      const isPastDeadline = deadlineTime <= nowMs;
+
+      let structuredReason: StructuredFailureReason = 'compute_exhausted';
+      if (failureReason === 'energy') {
+        structuredReason = 'energy_exhausted';
+      } else if (failureReason === 'cpu' || failureReason === 'memory') {
+        structuredReason = 'compute_exhausted';
+      } else {
+        structuredReason = 'deadline_missed';
+      }
+
+      const targetStatus: 'Failed' | 'Deferred' = isPastDeadline ? 'Failed' : 'Deferred';
+
       unscheduledWorkloads.push({
         id: job.id,
         name: job.name,
@@ -502,45 +545,41 @@ export async function executeCronPipelineNow(): Promise<CronRunResult> {
         priority: job.priority,
         reason: `Resource exhaustion across all regions: constraint failed on ${failureReason}`,
         exhaustedResource: failureReason,
+        structuredReason: isPastDeadline ? 'deadline_missed' : structuredReason,
+        targetStatus,
       });
     }
   }
 
-  // Step 4: Batch-update workload statuses in Supabase from 'Pending' to 'Scheduled'
-  const updatePromises = scheduledWorkloads.map(async (job) => {
-    // In-memory update
-    const inMem = inMemoryWorkloadStore.find((w) => w.id === job.id);
-    if (inMem) {
-      inMem.status = 'Scheduled';
-      inMem.scheduledTime = job.scheduledTime;
-      inMem.energySource = job.energySource;
-      inMem.sourceAllocationMix = job.sourceAllocationMix;
-    }
-
-    // Supabase update via Drizzle
-    try {
-      await db
-        .update(workloads)
-        .set({
-          status: 'Scheduled',
-          scheduledTime: job.scheduledTime,
-          energySource: job.energySource,
-          sourceAllocationMix: job.sourceAllocationMix,
-        })
-        .where(eq(workloads.id, job.id));
-    } catch {
-      try {
-        await db
-          .update(workloads)
-          .set({ status: 'Scheduled' })
-          .where(eq(workloads.id, job.id));
-      } catch {
-        // Safe fallback if DB is unconfigured
-      }
-    }
-  });
-
-  await Promise.all(updatePromises);
+  // Step 4: Batch-update workload statuses in Supabase (Scheduled -> Scheduled, Unallocated -> Failed/Deferred)
+  await batchPersistSchedulingResults(
+    db,
+    {
+      runId,
+      timestamp: new Date().toISOString(),
+      dataCenterId: 'cross-region',
+      dataCenterName: 'Multi-Region Router',
+      scheduledWorkloads,
+      unscheduledWorkloads,
+      telemetryPostAllocation: {
+        remainingRenewableKwh: [],
+        remainingCpuCores: [],
+        remainingRamGb: [],
+      },
+      metrics: {
+        totalEvaluated: pendingWorkloads.length,
+        totalScheduled: scheduledWorkloads.length,
+        totalUnscheduled: unscheduledWorkloads.length,
+        successRatePct: pendingWorkloads.length
+          ? Math.round((scheduledWorkloads.length / pendingWorkloads.length) * 100)
+          : 100,
+        totalScheduledEnergyKwh: totalEnergyScheduled,
+        renewableUtilizationPct: 100,
+        estimatedCo2AvoidedKg: Math.round(totalEnergyScheduled * 0.42 * 10) / 10,
+      },
+    },
+    inMemoryWorkloadStore
+  );
 
   const durationMs = Date.now() - startTime;
   const estimatedCo2AvoidedKg = Math.round(totalEnergyScheduled * 0.42 * 10) / 10;

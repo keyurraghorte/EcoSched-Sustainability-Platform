@@ -41897,7 +41897,8 @@ var statusEnum = pgEnum("status", [
   "Pending",
   "Scheduled",
   "Completed",
-  "Failed"
+  "Failed",
+  "Deferred"
 ]);
 var workloads = pgTable("workloads", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -41911,6 +41912,8 @@ var workloads = pgTable("workloads", {
   priority: priorityEnum("priority").notNull(),
   dataSizeGb: real("data_size_gb").default(0).notNull(),
   status: statusEnum("status").default("Pending").notNull(),
+  failureReason: text("failure_reason"),
+  failureDetails: text("failure_details"),
   scheduledTime: timestamp("scheduled_time", { mode: "string", withTimezone: true }),
   energySource: text("energy_source"),
   sourceAllocationMix: text("source_allocation_mix"),
@@ -42919,12 +42922,86 @@ function calculateWeightedScore(workload, maxEnergy = 100, maxCpu = 64, maxRam =
   const rawScore = 0.4 * normEnergy + 0.3 * normCpu + 0.2 * normRam + 0.1 * normDuration;
   return rawScore * priorityMultiplier;
 }
-function runMultiDimensionalScheduler(pendingWorkloads, telemetry) {
+function rehydrateDataCenterTrees(telemetry, activeReservations) {
   const numBuckets = telemetry.timeBuckets.length;
   const bucketMinutes = telemetry.bucketMinutes || 60;
-  const energyTree = new MinSegmentTree(telemetry.renewableHeadroomKwh);
-  const cpuTree = new MinSegmentTree(telemetry.availableCpuCores);
-  const ramTree = new MinSegmentTree(telemetry.availableRamGb);
+  const bucketDurationMs = bucketMinutes * 60 * 1e3;
+  const committedEnergy = Array(numBuckets).fill(0);
+  const committedCpu = Array(numBuckets).fill(0);
+  const committedRam = Array(numBuckets).fill(0);
+  let activeCount = 0;
+  for (const res of activeReservations) {
+    if (!res.scheduledTime) continue;
+    if (res.dataCenterId && res.dataCenterId !== telemetry.dataCenterId) {
+      continue;
+    }
+    const resStart = new Date(res.scheduledTime).getTime();
+    const resEnd = resStart + res.durationMinutes * 60 * 1e3;
+    const slotSpan = Math.max(1, Math.ceil(res.durationMinutes / bucketMinutes));
+    const energyPerSlot = res.energyKwh / slotSpan;
+    let overlaps = false;
+    for (let i = 0; i < numBuckets; i++) {
+      const bStart = new Date(telemetry.timeBuckets[i]).getTime();
+      const bEnd = bStart + bucketDurationMs;
+      if (resStart < bEnd && resEnd > bStart) {
+        committedEnergy[i] += energyPerSlot;
+        committedCpu[i] += res.cpuCores;
+        committedRam[i] += res.memoryGb;
+        overlaps = true;
+      }
+    }
+    if (overlaps) {
+      activeCount++;
+    }
+  }
+  const renewableKwh = telemetry.renewableHeadroomKwh.map(
+    (base, i) => Math.max(0, base - committedEnergy[i])
+  );
+  const cpuCores = telemetry.availableCpuCores.map(
+    (base, i) => Math.max(0, base - committedCpu[i])
+  );
+  const ramGb = telemetry.availableRamGb.map(
+    (base, i) => Math.max(0, base - committedRam[i])
+  );
+  return {
+    energyTree: new AvailabilitySegmentTree2(renewableKwh),
+    cpuTree: new AvailabilitySegmentTree2(cpuCores),
+    ramTree: new AvailabilitySegmentTree2(ramGb),
+    committedUsage: {
+      energyKwh: committedEnergy,
+      cpuCores: committedCpu,
+      ramGb: committedRam
+    },
+    rehydratedHeadroom: {
+      renewableKwh,
+      cpuCores,
+      ramGb
+    },
+    activeCount
+  };
+}
+function runMultiDimensionalScheduler(pendingWorkloads, telemetry, options) {
+  const numBuckets = telemetry.timeBuckets.length;
+  const bucketMinutes = telemetry.bucketMinutes || 60;
+  const nowMs = (options?.currentTime || /* @__PURE__ */ new Date()).getTime();
+  let energyTree;
+  let cpuTree;
+  let ramTree;
+  if (options?.windowManager) {
+    const rolled = options.windowManager.applyRollingTelemetryUpdate(telemetry);
+    energyTree = rolled.energyTree;
+    cpuTree = rolled.cpuTree;
+    ramTree = rolled.ramTree;
+  } else if (options?.activeReservations && options.activeReservations.length > 0) {
+    const rehydrated = rehydrateDataCenterTrees(telemetry, options.activeReservations);
+    energyTree = rehydrated.energyTree;
+    cpuTree = rehydrated.cpuTree;
+    ramTree = rehydrated.ramTree;
+  } else {
+    energyTree = new MinSegmentTree(telemetry.renewableHeadroomKwh);
+    cpuTree = new MinSegmentTree(telemetry.availableCpuCores);
+    ramTree = new MinSegmentTree(telemetry.availableRamGb);
+  }
   const sortedWorkloads = [...pendingWorkloads].sort((a, b2) => {
     const scoreA = calculateWeightedScore(a);
     const scoreB = calculateWeightedScore(b2);
@@ -42936,7 +43013,7 @@ function runMultiDimensionalScheduler(pendingWorkloads, telemetry) {
   const scheduledWorkloads = [];
   const unscheduledWorkloads = [];
   let totalScheduledEnergy = 0;
-  let totalRenewableHeadroomInitial = telemetry.renewableHeadroomKwh.reduce(
+  const totalRenewableHeadroomInitial = telemetry.renewableHeadroomKwh.reduce(
     (a, b2) => a + b2,
     0
   );
@@ -42945,6 +43022,23 @@ function runMultiDimensionalScheduler(pendingWorkloads, telemetry) {
     const energyPerSlot = job.energyKwh / slotSpan;
     const arrivalTime = new Date(job.arrival).getTime();
     const deadlineTime = new Date(job.deadline).getTime();
+    const requiredDurationMs = job.durationMinutes * 60 * 1e3;
+    const earliestFeasibleStartMs = Math.max(arrivalTime, nowMs);
+    if (deadlineTime < earliestFeasibleStartMs + requiredDurationMs) {
+      unscheduledWorkloads.push({
+        id: job.id,
+        name: job.name,
+        cpuCores: job.cpuCores,
+        memoryGb: job.memoryGb,
+        energyKwh: job.energyKwh,
+        priority: job.priority,
+        reason: `Deadline missed: required duration ${job.durationMinutes}m exceeds available window before deadline ${job.deadline}`,
+        exhaustedResource: "window",
+        structuredReason: "deadline_missed",
+        targetStatus: "Failed"
+      });
+      continue;
+    }
     let earliestSlot = 0;
     let latestSlot = numBuckets;
     telemetry.timeBuckets.forEach((bucketIso, idx) => {
@@ -42958,6 +43052,21 @@ function runMultiDimensionalScheduler(pendingWorkloads, telemetry) {
     });
     earliestSlot = Math.max(0, Math.min(earliestSlot, numBuckets - 1));
     latestSlot = Math.max(earliestSlot + slotSpan, Math.min(latestSlot, numBuckets));
+    if (latestSlot - earliestSlot < slotSpan) {
+      unscheduledWorkloads.push({
+        id: job.id,
+        name: job.name,
+        cpuCores: job.cpuCores,
+        memoryGb: job.memoryGb,
+        energyKwh: job.energyKwh,
+        priority: job.priority,
+        reason: `Deadline missed: time horizon inside telemetry window is insufficient for ${job.durationMinutes}m job`,
+        exhaustedResource: "window",
+        structuredReason: "deadline_missed",
+        targetStatus: "Failed"
+      });
+      continue;
+    }
     let bestSlot = -1;
     let bestCleanScore = -1;
     let failureReason = "window";
@@ -43011,7 +43120,7 @@ function runMultiDimensionalScheduler(pendingWorkloads, telemetry) {
       const endTime = bestSlot + slotSpan < numBuckets ? telemetry.timeBuckets[bestSlot + slotSpan] : new Date(
         new Date(startTime).getTime() + job.durationMinutes * 60 * 1e3
       ).toISOString();
-      scheduledWorkloads.push({
+      const scheduledItem = {
         id: job.id,
         name: job.name,
         cpuCores: job.cpuCores,
@@ -43026,17 +43135,36 @@ function runMultiDimensionalScheduler(pendingWorkloads, telemetry) {
         energySource: dominantSource,
         sourceAllocationMix,
         carbonScore: Math.round(100 - gridPct)
-      });
+      };
+      scheduledWorkloads.push(scheduledItem);
       totalScheduledEnergy += job.energyKwh;
+      if (options?.windowManager) {
+        options.windowManager.addReservation({
+          id: job.id,
+          name: job.name,
+          dataCenterId: telemetry.dataCenterId,
+          scheduledTime: startTime,
+          durationMinutes: job.durationMinutes,
+          cpuCores: job.cpuCores,
+          memoryGb: job.memoryGb,
+          energyKwh: job.energyKwh
+        });
+      }
     } else {
+      let structuredReason = "compute_exhausted";
       let message = "Resource exhaustion: Insufficient contiguous capacity before deadline";
       if (failureReason === "energy") {
-        message = "Resource exhaustion: Insufficient renewable energy headroom in available window";
+        structuredReason = "energy_exhausted";
+        message = `Resource exhaustion: Insufficient renewable energy headroom (${energyPerSlot.toFixed(1)} kWh/slot requested)`;
       } else if (failureReason === "cpu") {
+        structuredReason = "compute_exhausted";
         message = `Resource exhaustion: CPU saturation exceeded (${job.cpuCores} cores requested)`;
       } else if (failureReason === "memory") {
+        structuredReason = "compute_exhausted";
         message = `Resource exhaustion: RAM capacity exceeded (${job.memoryGb} GB requested)`;
       }
+      const isPastDeadline = deadlineTime <= nowMs;
+      const targetStatus = isPastDeadline ? "Failed" : "Deferred";
       unscheduledWorkloads.push({
         id: job.id,
         name: job.name,
@@ -43045,7 +43173,9 @@ function runMultiDimensionalScheduler(pendingWorkloads, telemetry) {
         energyKwh: job.energyKwh,
         priority: job.priority,
         reason: message,
-        exhaustedResource: failureReason
+        exhaustedResource: failureReason,
+        structuredReason: isPastDeadline ? "deadline_missed" : structuredReason,
+        targetStatus
       });
     }
   }
@@ -43080,6 +43210,65 @@ function runMultiDimensionalScheduler(pendingWorkloads, telemetry) {
       estimatedCo2AvoidedKg
     }
   };
+}
+async function pollAndLockPendingWorkloads(database, batchSize = 50) {
+  try {
+    return await database.select().from(workloads).where(eq(workloads.status, "Pending")).orderBy(desc(workloads.priority), asc(workloads.createdAt)).for("update", { skipLocked: true }).limit(batchSize);
+  } catch (err) {
+    if (typeof database.select === "function") {
+      return await database.select().from(workloads).where(eq(workloads.status, "Pending")).limit(batchSize);
+    }
+    throw err;
+  }
+}
+async function batchPersistSchedulingResults(database, output, inMemoryStore) {
+  const scheduledUpdates = output.scheduledWorkloads.map(async (job) => {
+    if (inMemoryStore) {
+      const inMem = inMemoryStore.find((w) => w.id === job.id);
+      if (inMem) {
+        inMem.status = "Scheduled";
+        inMem.scheduledTime = job.scheduledTime;
+        inMem.energySource = job.energySource;
+        inMem.sourceAllocationMix = job.sourceAllocationMix;
+      }
+    }
+    try {
+      await database.update(workloads).set({
+        status: "Scheduled",
+        scheduledTime: job.scheduledTime,
+        energySource: job.energySource,
+        sourceAllocationMix: job.sourceAllocationMix,
+        failureReason: null,
+        failureDetails: null
+      }).where(eq(workloads.id, job.id));
+    } catch {
+      try {
+        await database.update(workloads).set({ status: "Scheduled" }).where(eq(workloads.id, job.id));
+      } catch {
+      }
+    }
+  });
+  const unallocatedUpdates = output.unscheduledWorkloads.map(async (job) => {
+    if (inMemoryStore) {
+      const inMem = inMemoryStore.find((w) => w.id === job.id);
+      if (inMem) {
+        inMem.status = job.targetStatus;
+      }
+    }
+    try {
+      await database.update(workloads).set({
+        status: job.targetStatus,
+        failureReason: job.structuredReason,
+        failureDetails: job.reason
+      }).where(eq(workloads.id, job.id));
+    } catch {
+      try {
+        await database.update(workloads).set({ status: job.targetStatus }).where(eq(workloads.id, job.id));
+      } catch {
+      }
+    }
+  });
+  await Promise.all([...scheduledUpdates, ...unallocatedUpdates]);
 }
 
 // src/routes/scheduler.ts
@@ -43131,14 +43320,14 @@ async function handleSchedulingRun(req, res) {
     const dataCenterId = req.body?.dataCenterId || "oslo-fjord-1";
     let pendingWorkloads = [];
     try {
-      pendingWorkloads = await db.select().from(workloads).where(eq(workloads.status, "Pending"));
+      pendingWorkloads = await pollAndLockPendingWorkloads(db, 50);
     } catch (dbErr) {
-      console.warn("Database query failed; querying in-memory store:", dbErr?.message);
+      console.warn("Database locking query failed; querying in-memory store:", dbErr?.message);
       pendingWorkloads = inMemoryWorkloadStore.filter((w) => w.status === "Pending");
     }
     if (!pendingWorkloads || pendingWorkloads.length === 0) {
       return res.status(200).json({
-        message: "No pending workloads found in database.",
+        message: "No pending workloads found in queue.",
         scheduledWorkloads: [],
         unscheduledWorkloads: [],
         metrics: {
@@ -43153,30 +43342,33 @@ async function handleSchedulingRun(req, res) {
       });
     }
     const telemetry = getActiveDataCenterTelemetry(dataCenterId);
-    const schedulingOutput = runMultiDimensionalScheduler(pendingWorkloads, telemetry);
-    const updatePromises = schedulingOutput.scheduledWorkloads.map(async (job) => {
-      const inMem = inMemoryWorkloadStore.find((w) => w.id === job.id);
-      if (inMem) {
-        inMem.status = "Scheduled";
-        inMem.scheduledTime = job.scheduledTime;
-        inMem.energySource = job.energySource;
-        inMem.sourceAllocationMix = job.sourceAllocationMix;
-      }
-      try {
-        await db.update(workloads).set({
-          status: "Scheduled",
-          scheduledTime: job.scheduledTime,
-          energySource: job.energySource,
-          sourceAllocationMix: job.sourceAllocationMix
-        }).where(eq(workloads.id, job.id));
-      } catch (colErr) {
-        try {
-          await db.update(workloads).set({ status: "Scheduled" }).where(eq(workloads.id, job.id));
-        } catch {
-        }
-      }
+    let activeReservations = [];
+    try {
+      const existingScheduled = await db.select().from(workloads).where(
+        and(
+          eq(workloads.status, "Scheduled"),
+          isNotNull(workloads.scheduledTime)
+        )
+      );
+      activeReservations = existingScheduled.map((w) => ({
+        id: w.id,
+        name: w.name,
+        scheduledTime: w.scheduledTime,
+        durationMinutes: w.durationMinutes,
+        cpuCores: w.cpuCores,
+        memoryGb: w.memoryGb,
+        energyKwh: w.energyKwh
+      }));
+    } catch {
+    }
+    const schedulingOutput = runMultiDimensionalScheduler(pendingWorkloads, telemetry, {
+      activeReservations
     });
-    await Promise.all(updatePromises);
+    await batchPersistSchedulingResults(
+      db,
+      schedulingOutput,
+      inMemoryWorkloadStore
+    );
     return res.status(200).json(schedulingOutput);
   } catch (error) {
     console.error("Scheduling pipeline execution failed:", error);
@@ -43392,10 +43584,30 @@ async function executeCronPipelineNow() {
   );
   let pendingWorkloads = [];
   try {
-    pendingWorkloads = await db.select().from(workloads).where(eq(workloads.status, "Pending"));
+    pendingWorkloads = await pollAndLockPendingWorkloads(db, 100);
   } catch (err) {
-    console.warn("[EcoSched Cron] Database query failed; using in-memory store:", err?.message);
+    console.warn("[EcoSched Cron] Database locking query failed; using in-memory store:", err?.message);
     pendingWorkloads = inMemoryWorkloadStore.filter((w) => w.status === "Pending");
+  }
+  let activeReservations = [];
+  try {
+    const rawActive = await db.select().from(workloads).where(
+      and(
+        eq(workloads.status, "Scheduled"),
+        isNotNull(workloads.scheduledTime)
+      )
+    );
+    activeReservations = rawActive.map((w) => ({
+      id: w.id,
+      name: w.name,
+      scheduledTime: w.scheduledTime,
+      durationMinutes: w.durationMinutes,
+      cpuCores: w.cpuCores,
+      memoryGb: w.memoryGb,
+      energyKwh: w.energyKwh
+    }));
+  } catch (err) {
+    console.warn("[EcoSched Cron] Could not query active reservations for rehydration:", err?.message);
   }
   if (pendingWorkloads.length === 0) {
     console.log("[EcoSched Cron] \u2139\uFE0F Zero pending workloads in queue. Telemetry refreshed.");
@@ -43426,11 +43638,12 @@ async function executeCronPipelineNow() {
   );
   const facilityTrees = /* @__PURE__ */ new Map();
   for (const snap of rankedFacilities) {
+    const rehydrated = rehydrateDataCenterTrees(snap.telemetry, activeReservations);
     facilityTrees.set(snap.dataCenter.id, {
       snapshot: snap,
-      energyTree: new AvailabilitySegmentTree2(snap.telemetry.renewableHeadroomKwh),
-      cpuTree: new AvailabilitySegmentTree2(snap.telemetry.availableCpuCores),
-      ramTree: new AvailabilitySegmentTree2(snap.telemetry.availableRamGb)
+      energyTree: rehydrated.energyTree,
+      cpuTree: rehydrated.cpuTree,
+      ramTree: rehydrated.ramTree
     });
   }
   const sortedJobs = [...pendingWorkloads].sort((a, b2) => {
@@ -43540,6 +43753,18 @@ async function executeCronPipelineNow() {
       }
     }
     if (!placed) {
+      const nowMs = Date.now();
+      const deadlineTime = new Date(job.deadline).getTime();
+      const isPastDeadline = deadlineTime <= nowMs;
+      let structuredReason = "compute_exhausted";
+      if (failureReason === "energy") {
+        structuredReason = "energy_exhausted";
+      } else if (failureReason === "cpu" || failureReason === "memory") {
+        structuredReason = "compute_exhausted";
+      } else {
+        structuredReason = "deadline_missed";
+      }
+      const targetStatus = isPastDeadline ? "Failed" : "Deferred";
       unscheduledWorkloads.push({
         id: job.id,
         name: job.name,
@@ -43548,33 +43773,38 @@ async function executeCronPipelineNow() {
         energyKwh: job.energyKwh,
         priority: job.priority,
         reason: `Resource exhaustion across all regions: constraint failed on ${failureReason}`,
-        exhaustedResource: failureReason
+        exhaustedResource: failureReason,
+        structuredReason: isPastDeadline ? "deadline_missed" : structuredReason,
+        targetStatus
       });
     }
   }
-  const updatePromises = scheduledWorkloads.map(async (job) => {
-    const inMem = inMemoryWorkloadStore.find((w) => w.id === job.id);
-    if (inMem) {
-      inMem.status = "Scheduled";
-      inMem.scheduledTime = job.scheduledTime;
-      inMem.energySource = job.energySource;
-      inMem.sourceAllocationMix = job.sourceAllocationMix;
-    }
-    try {
-      await db.update(workloads).set({
-        status: "Scheduled",
-        scheduledTime: job.scheduledTime,
-        energySource: job.energySource,
-        sourceAllocationMix: job.sourceAllocationMix
-      }).where(eq(workloads.id, job.id));
-    } catch {
-      try {
-        await db.update(workloads).set({ status: "Scheduled" }).where(eq(workloads.id, job.id));
-      } catch {
+  await batchPersistSchedulingResults(
+    db,
+    {
+      runId,
+      timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+      dataCenterId: "cross-region",
+      dataCenterName: "Multi-Region Router",
+      scheduledWorkloads,
+      unscheduledWorkloads,
+      telemetryPostAllocation: {
+        remainingRenewableKwh: [],
+        remainingCpuCores: [],
+        remainingRamGb: []
+      },
+      metrics: {
+        totalEvaluated: pendingWorkloads.length,
+        totalScheduled: scheduledWorkloads.length,
+        totalUnscheduled: unscheduledWorkloads.length,
+        successRatePct: pendingWorkloads.length ? Math.round(scheduledWorkloads.length / pendingWorkloads.length * 100) : 100,
+        totalScheduledEnergyKwh: totalEnergyScheduled,
+        renewableUtilizationPct: 100,
+        estimatedCo2AvoidedKg: Math.round(totalEnergyScheduled * 0.42 * 10) / 10
       }
-    }
-  });
-  await Promise.all(updatePromises);
+    },
+    inMemoryWorkloadStore
+  );
   const durationMs = Date.now() - startTime;
   const estimatedCo2AvoidedKg = Math.round(totalEnergyScheduled * 0.42 * 10) / 10;
   console.log(

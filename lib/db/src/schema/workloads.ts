@@ -16,6 +16,7 @@ export const statusEnum = pgEnum("status", [
   "Scheduled",
   "Completed",
   "Failed",
+  "Deferred",
 ]);
 
 // Workloads table using Drizzle's pgTable
@@ -31,6 +32,8 @@ export const workloads = pgTable("workloads", {
   priority: priorityEnum("priority").notNull(),
   dataSizeGb: real("data_size_gb").default(0).notNull(),
   status: statusEnum("status").default("Pending").notNull(),
+  failureReason: text("failure_reason"),
+  failureDetails: text("failure_details"),
   scheduledTime: timestamp("scheduled_time", { mode: "string", withTimezone: true }),
   energySource: text("energy_source"),
   sourceAllocationMix: text("source_allocation_mix"),
