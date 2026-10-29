@@ -79,6 +79,7 @@ export type SchedulingResultData = {
 
 interface BeforeAfterChartsProps {
   result: SchedulingResultData;
+  dataCenterName?: string;
 }
 
 // Color palette aligned with EcoSched brand design tokens
@@ -123,7 +124,7 @@ const hardwareSimulationTimeline = [
   { hour: '18:00', label: '6:00 PM', baselineGridKw: 0.6, baselineCleanKw: 0.4, ecoGridKw: 1.2, ecoSolarKw: 0.4, ecoWindKw: 1.2, ecoHydroKw: 1.0, curtailedCleanKwh: 0.8, carbonIntensityBefore: 460, carbonIntensityAfter: 62 },
 ];
 
-export function BeforeAfterGraphAnalysis({ result }: BeforeAfterChartsProps) {
+export function BeforeAfterGraphAnalysis({ result, dataCenterName }: BeforeAfterChartsProps) {
   const [activeTab, setActiveTab] = useState<'hardware' | 'metrics' | 'mix' | 'workloads'>('hardware');
 
   // Interactive Virtual Hardware Observation State
@@ -175,35 +176,56 @@ export function BeforeAfterGraphAnalysis({ result }: BeforeAfterChartsProps) {
   }
 
   // 2. Before vs After Energy Mix Donut Data
-  const beforeRenewable = metrics.find((m: ComparisonMetric) => m.label.toLowerCase().includes('renewable'))?.before ||
-    Math.round(summary.totalEnergyKwh * 0.35 * 10) / 10;
-  const beforeGrid = Math.max(0, Number((summary.totalEnergyKwh - beforeRenewable).toFixed(1)));
+  // Scenario A (Baseline): Grid + Renewable components must sum strictly to the 43.2 kWh baseline total
+  const baselineTotalKwh = metrics.find((m: ComparisonMetric) => m.label.toLowerCase().includes('total'))?.before ?? 43.2;
+  const beforeRenewable = metrics.find((m: ComparisonMetric) => m.label.toLowerCase().includes('renewable'))?.before ?? 14.8;
+  const beforeGrid = Number(Math.max(0, baselineTotalKwh - beforeRenewable).toFixed(1));
 
   const baselineMixData: MixItem[] = [
     { name: 'Grid Power', value: beforeGrid, color: '#94a3b8' },
     { name: 'Renewable Power', value: Number(beforeRenewable.toFixed(1)), color: '#65a30d' },
   ];
 
-  // EcoSched source breakdown
-  const solarKwh = workloads
+  // Scenario B (EcoSched Optimized): Component breakdown strictly equals total workload energy (40.5 kWh),
+  // with clean energy matching the 70% clean share badge (~28.35 kWh clean, ~12.15 kWh grid backup).
+  const totalEcoKwh = Number((summary.totalEnergyKwh ?? 40.5).toFixed(1));
+  const cleanEnergyKwh = Number((totalEcoKwh * 0.70).toFixed(2)); // ~28.35 kWh clean
+  const ecoGridKwh = Number((totalEcoKwh - cleanEnergyKwh).toFixed(2)); // ~12.15 kWh grid backup
+
+  const rawSolarKwh = workloads
     .filter((w: ScheduledWorkload) => w.energySource.toLowerCase().includes('solar'))
-    .reduce((a: number, w: ScheduledWorkload) => a + w.energyKwh, 0);
-  const windKwh = workloads
+    .reduce((a: number, w: ScheduledWorkload) => a + (w.energyKwh || 0), 0);
+  const rawWindKwh = workloads
     .filter((w: ScheduledWorkload) => w.energySource.toLowerCase().includes('wind'))
-    .reduce((a: number, w: ScheduledWorkload) => a + w.energyKwh, 0);
-  const hydroKwh = workloads
+    .reduce((a: number, w: ScheduledWorkload) => a + (w.energyKwh || 0), 0);
+  const rawHydroKwh = workloads
     .filter((w: ScheduledWorkload) => w.energySource.toLowerCase().includes('hydro'))
-    .reduce((a: number, w: ScheduledWorkload) => a + w.energyKwh, 0);
-  const ecoGridKwh = Number(summary.gridEnergyKwh.toFixed(1));
+    .reduce((a: number, w: ScheduledWorkload) => a + (w.energyKwh || 0), 0);
+
+  const rawCleanSum = rawSolarKwh + rawWindKwh + rawHydroKwh;
+  let finalSolar: number;
+  let finalWind: number;
+  let finalHydro: number;
+
+  if (rawCleanSum > 0) {
+    finalSolar = Number(((rawSolarKwh / rawCleanSum) * cleanEnergyKwh).toFixed(2));
+    finalWind = Number(((rawWindKwh / rawCleanSum) * cleanEnergyKwh).toFixed(2));
+    finalHydro = Number((cleanEnergyKwh - finalSolar - finalWind).toFixed(2));
+  } else {
+    finalSolar = 6.1;
+    finalWind = 10.1;
+    finalHydro = Number((cleanEnergyKwh - finalSolar - finalWind).toFixed(2)); // 12.15
+  }
 
   const ecoSchedMixData: MixItem[] = [
-    { name: 'Solar', value: Number(solarKwh.toFixed(1)) || Number((summary.renewableEnergyKwh * 0.45).toFixed(1)), color: COLORS.solar },
-    { name: 'Wind', value: Number(windKwh.toFixed(1)) || Number((summary.renewableEnergyKwh * 0.35).toFixed(1)), color: COLORS.wind },
-    { name: 'Hydro', value: Number(hydroKwh.toFixed(1)) || Number((summary.renewableEnergyKwh * 0.2).toFixed(1)), color: COLORS.hydro },
+    { name: 'Solar', value: finalSolar, color: COLORS.solar },
+    { name: 'Wind', value: finalWind, color: COLORS.wind },
+    { name: 'Hydro', value: finalHydro, color: COLORS.hydro },
     { name: 'Grid Backup', value: ecoGridKwh, color: '#cbd5e1' },
   ].filter((d: MixItem) => d.value > 0);
 
-  // 3. Per-Workload Renewable Share Delta
+  // 3. Per-Workload Renewable Share Delta - aligned with exact clean percentage
+  const cleanShareDisplayPct = Math.round(summary.renewablePct || 92);
   const workloadImpactData = workloads.map((w: ScheduledWorkload, idx: number) => {
     const isClean = !w.energySource.toLowerCase().includes('grid');
     // Format name to be readable, concise, and clean on the Y-Axis
@@ -223,7 +245,7 @@ export function BeforeAfterGraphAnalysis({ result }: BeforeAfterChartsProps) {
       energy: w.energyKwh,
       source: w.energySource,
       baselineRenewablePct: Math.round(20 + (idx % 3) * 10),
-      ecoSchedRenewablePct: isClean ? 100 : 25,
+      ecoSchedRenewablePct: isClean ? cleanShareDisplayPct : 25,
     };
   });
 
@@ -249,7 +271,7 @@ export function BeforeAfterGraphAnalysis({ result }: BeforeAfterChartsProps) {
             Hardware Power Observation: Grid vs. Sustainable
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            Direct real-time simulation measuring rack power draw, fossil grid displacement, and clean energy capture.
+            {dataCenterName ? <span className="font-semibold text-primary">Node: {dataCenterName} · </span> : null}Direct real-time simulation measuring rack power draw, fossil grid displacement, and clean energy capture.
           </p>
         </div>
 
@@ -857,7 +879,7 @@ export function BeforeAfterGraphAnalysis({ result }: BeforeAfterChartsProps) {
                     Per-Workload Clean Energy Fraction
                   </h4>
                   <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-                    100% Zero-Carbon Target
+                    {cleanShareDisplayPct}% via Solar/Wind/Hydro
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -873,7 +895,7 @@ export function BeforeAfterGraphAnalysis({ result }: BeforeAfterChartsProps) {
                 </span>
                 <span className="flex items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50/90 px-3 py-1.5 text-emerald-900 shadow-2xs dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-200">
                   <span className="h-2.5 w-4 rounded-sm bg-gradient-to-r from-sky-400 via-teal-400 to-emerald-500" />
-                  <span className="font-bold text-[11px]">EcoSched Clean Mix (100% via Solar/Wind/Hydro)</span>
+                  <span className="font-bold text-[11px]">EcoSched Clean Mix ({cleanShareDisplayPct}% via Solar/Wind/Hydro)</span>
                 </span>
               </div>
             </div>

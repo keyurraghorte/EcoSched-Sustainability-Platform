@@ -43273,7 +43273,21 @@ async function batchPersistSchedulingResults(database, output, inMemoryStore) {
 
 // src/routes/scheduler.ts
 var router4 = (0, import_express4.Router)();
-function getActiveDataCenterTelemetry(dataCenterId = "oslo-fjord-1") {
+var DC_NAME_MAP = {
+  "oslo-fjord-1": "Oslo Fjord 01",
+  "rotterdam-delta-2": "Rotterdam Delta 02",
+  "stockholm-north-3": "Stockholm North 03",
+  "dublin-green-1": "Dublin Green 01",
+  "frankfurt-clean-2": "Frankfurt Clean 02",
+  "frankfurt-main-4": "Frankfurt Main 04",
+  "reykjavik-geo-1": "Reykjavik Geothermal 01",
+  "helsinki-wind-1": "Helsinki Wind 01"
+};
+function formatDataCenterName(id) {
+  if (DC_NAME_MAP[id]) return DC_NAME_MAP[id];
+  return id.split(/[-_]/).map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(" ");
+}
+function getActiveDataCenterTelemetry(dataCenterId = "oslo-fjord-1", customName) {
   const baseDate = /* @__PURE__ */ new Date();
   baseDate.setMinutes(0, 0, 0);
   const hours = 24;
@@ -43306,7 +43320,7 @@ function getActiveDataCenterTelemetry(dataCenterId = "oslo-fjord-1") {
   }
   return {
     dataCenterId,
-    dataCenterName: dataCenterId === "rotterdam-delta-2" ? "Rotterdam Delta 02" : "Oslo Fjord 01",
+    dataCenterName: customName || formatDataCenterName(dataCenterId),
     bucketMinutes: 60,
     timeBuckets,
     renewableHeadroomKwh,
@@ -43318,6 +43332,7 @@ function getActiveDataCenterTelemetry(dataCenterId = "oslo-fjord-1") {
 async function handleSchedulingRun(req, res) {
   try {
     const dataCenterId = req.body?.dataCenterId || "oslo-fjord-1";
+    const dataCenterName = req.body?.dataCenterName || void 0;
     let pendingWorkloads = [];
     try {
       pendingWorkloads = await pollAndLockPendingWorkloads(db, 50);
@@ -43328,6 +43343,8 @@ async function handleSchedulingRun(req, res) {
     if (!pendingWorkloads || pendingWorkloads.length === 0) {
       return res.status(200).json({
         message: "No pending workloads found in queue.",
+        dataCenterId,
+        dataCenterName: dataCenterName || formatDataCenterName(dataCenterId),
         scheduledWorkloads: [],
         unscheduledWorkloads: [],
         metrics: {
@@ -43341,7 +43358,7 @@ async function handleSchedulingRun(req, res) {
         }
       });
     }
-    const telemetry = getActiveDataCenterTelemetry(dataCenterId);
+    const telemetry = getActiveDataCenterTelemetry(dataCenterId, dataCenterName);
     let activeReservations = [];
     try {
       const existingScheduled = await db.select().from(workloads).where(

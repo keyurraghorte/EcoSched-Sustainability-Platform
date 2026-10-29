@@ -78,8 +78,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const value = useMemo(() => ({ companies, dataCenters, company, dataCenter, companyId: actualCompanyId, dataCenterId: actualDataCenterId, setCompanyId, setDataCenterId, workloads, setWorkloads: updateWorkloads, result, setResult }), [companies, dataCenters, company, dataCenter, actualCompanyId, actualDataCenterId, workloads, result]);
   return <WorkspaceContext.Provider value={value}>
     <div className="app-shell flex">
-      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[268px] flex-col bg-[hsl(var(--sidebar))] px-4 py-5 text-sidebar-foreground transition-transform md:sticky md:top-0 md:h-[100dvh] md:translate-x-0 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`} data-testid="sidebar-navigation">
-        <div className="flex items-center justify-between px-2 pb-7"><Brand /><button className="mobile-only text-white/70" onClick={() => setMobileOpen(false)} aria-label="Close navigation" data-testid="button-close-navigation"><X size={19} /></button></div>
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 backdrop-blur-xs md:hidden"
+          onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      <aside className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-[hsl(var(--sidebar))] px-4 py-5 text-sidebar-foreground transition-transform duration-300 md:sticky md:top-0 md:h-[100dvh] md:translate-x-0 ${mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}`} data-testid="sidebar-navigation">
+        <div className="flex items-center justify-between px-2 pb-7"><Brand /><button className="md:hidden text-white/70 hover:text-white" onClick={() => setMobileOpen(false)} aria-label="Close navigation" data-testid="button-close-navigation"><X size={19} /></button></div>
         <div className="mb-5 rounded-xl border border-white/10 bg-white/5 px-3 py-3">
           <p className="mono mb-2 text-[10px] uppercase tracking-[.16em] text-white/45">Active workspace</p>
           <select value={company?.id ?? ''} onChange={e => setCompanyId(e.target.value)} className="mb-2 w-full bg-transparent text-sm font-semibold text-white outline-none" data-testid="select-company"><option className="text-slate-900" value="">{companiesQuery.isLoading ? 'Loading companies...' : companiesQuery.isError ? 'Unable to load companies' : companies.length ? 'Choose company' : 'No companies configured'}</option>{companies.map(c => <option className="text-slate-900" key={c.id} value={c.id}>{c.name}</option>)}</select>
@@ -91,7 +98,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="mt-auto rounded-xl border border-white/10 bg-[linear-gradient(140deg,hsl(201_55%_31%),hsl(211_45%_20%))] p-4"><div className="mb-3 flex items-center gap-2 text-lime-300"><Zap size={16} /><span className="mono text-[10px] uppercase tracking-wider">Signal online</span></div><p className="text-xs leading-5 text-white/65">Weather and grid signals are ready for the next scheduling decision.</p></div>
       </aside>
       <div className="min-w-0 flex-1">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/80 bg-[hsl(var(--background)/.86)] px-4 backdrop-blur-xl md:px-8"><button className="mobile-only rounded-lg border border-border bg-card p-2" onClick={() => setMobileOpen(true)} aria-label="Open navigation" data-testid="button-open-navigation"><Menu size={18} /></button><div className="hidden items-center gap-2 text-xs text-muted-foreground md:flex"><Activity size={15} className="text-lime-600" /><span>Analysis workspace</span><span className="text-border">/</span><span className="font-medium text-foreground">{dataCenter?.name ?? 'Select a data center'}</span></div><div className="flex items-center gap-3"><span className="mono hidden text-[10px] uppercase tracking-widest text-muted-foreground sm:block">Live model</span><span className="flex items-center gap-1.5 text-xs font-semibold text-primary"><span className="h-2 w-2 animate-pulse rounded-full bg-lime-500" /> connected</span></div></header>
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/80 bg-[hsl(var(--background)/.86)] px-4 backdrop-blur-xl md:px-8"><button className="md:hidden rounded-lg border border-border bg-card p-2 text-foreground hover:bg-muted" onClick={() => setMobileOpen(true)} aria-label="Open navigation" data-testid="button-open-navigation"><Menu size={18} /></button><div className="hidden items-center gap-2 text-xs text-muted-foreground md:flex"><Activity size={15} className="text-lime-600" /><span>Analysis workspace</span><span className="text-border">/</span><span className="font-medium text-foreground">{dataCenter?.name ?? 'Select a data center'}</span></div><div className="flex items-center gap-3"><span className="mono hidden text-[10px] uppercase tracking-widest text-muted-foreground sm:block">Live model</span><span className="flex items-center gap-1.5 text-xs font-semibold text-primary"><span className="h-2 w-2 animate-pulse rounded-full bg-lime-500" /> connected</span></div></header>
         <main className="content-grid min-h-[calc(100dvh-4rem)] px-4 py-6 md:px-8 md:py-8">{children}</main>
       </div>
     </div>

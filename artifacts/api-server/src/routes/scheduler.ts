@@ -16,7 +16,26 @@ const router = Router();
 /**
  * Generates telemetry profile for the active data center across 24 hourly buckets.
  */
-export function getActiveDataCenterTelemetry(dataCenterId = 'oslo-fjord-1'): DataCenterCapacityTelemetry {
+const DC_NAME_MAP: Record<string, string> = {
+  'oslo-fjord-1': 'Oslo Fjord 01',
+  'rotterdam-delta-2': 'Rotterdam Delta 02',
+  'stockholm-north-3': 'Stockholm North 03',
+  'dublin-green-1': 'Dublin Green 01',
+  'frankfurt-clean-2': 'Frankfurt Clean 02',
+  'frankfurt-main-4': 'Frankfurt Main 04',
+  'reykjavik-geo-1': 'Reykjavik Geothermal 01',
+  'helsinki-wind-1': 'Helsinki Wind 01',
+};
+
+function formatDataCenterName(id: string): string {
+  if (DC_NAME_MAP[id]) return DC_NAME_MAP[id];
+  return id
+    .split(/[-_]/)
+    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+    .join(' ');
+}
+
+export function getActiveDataCenterTelemetry(dataCenterId = 'oslo-fjord-1', customName?: string): DataCenterCapacityTelemetry {
   const baseDate = new Date();
   baseDate.setMinutes(0, 0, 0);
 
@@ -67,7 +86,7 @@ export function getActiveDataCenterTelemetry(dataCenterId = 'oslo-fjord-1'): Dat
 
   return {
     dataCenterId,
-    dataCenterName: dataCenterId === 'rotterdam-delta-2' ? 'Rotterdam Delta 02' : 'Oslo Fjord 01',
+    dataCenterName: customName || formatDataCenterName(dataCenterId),
     bucketMinutes: 60,
     timeBuckets,
     renewableHeadroomKwh,
@@ -86,6 +105,7 @@ export function getActiveDataCenterTelemetry(dataCenterId = 'oslo-fjord-1'): Dat
 async function handleSchedulingRun(req: Request, res: Response) {
   try {
     const dataCenterId = (req.body?.dataCenterId as string) || 'oslo-fjord-1';
+    const dataCenterName = (req.body?.dataCenterName as string) || undefined;
 
     let pendingWorkloads: WorkloadSelect[] = [];
     try {
@@ -98,6 +118,8 @@ async function handleSchedulingRun(req: Request, res: Response) {
     if (!pendingWorkloads || pendingWorkloads.length === 0) {
       return res.status(200).json({
         message: 'No pending workloads found in queue.',
+        dataCenterId,
+        dataCenterName: dataCenterName || formatDataCenterName(dataCenterId),
         scheduledWorkloads: [],
         unscheduledWorkloads: [],
         metrics: {
@@ -112,7 +134,7 @@ async function handleSchedulingRun(req: Request, res: Response) {
       });
     }
 
-    const telemetry = getActiveDataCenterTelemetry(dataCenterId);
+    const telemetry = getActiveDataCenterTelemetry(dataCenterId, dataCenterName);
 
     let activeReservations: ActiveReservation[] = [];
     try {

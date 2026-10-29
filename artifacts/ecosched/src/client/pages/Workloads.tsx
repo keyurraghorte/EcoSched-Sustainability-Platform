@@ -26,6 +26,7 @@ import {
   runScheduler,
   type MultiDimensionalSchedulingOutput,
 } from '../api/workloads';
+import { useWorkspace } from '@/components/shell';
 import type { WorkloadInsert, WorkloadSelect } from '@workspace/db';
 
 type Priority = 'High' | 'Medium' | 'Low';
@@ -57,8 +58,25 @@ const defaultFormData: WorkloadFormData = {
   status: 'Pending',
 };
 
+const compactFormatter = new Intl.NumberFormat('en-US', {
+  notation: 'compact',
+  maximumFractionDigits: 1,
+});
+
+export function formatCompactNumber(value: number): string {
+  if (value === null || value === undefined || isNaN(value)) return '0';
+  if (Math.abs(value) < 1000) {
+    return Number.isInteger(value) ? value.toString() : value.toFixed(1);
+  }
+  return compactFormatter.format(value);
+}
+
 export function Workloads(): React.ReactElement {
   const queryClient = useQueryClient();
+  const { dataCenterId, dataCenter } = useWorkspace();
+  const activeDcId = dataCenterId || 'oslo-fjord-1';
+  const activeDcName = dataCenter?.name || 'Oslo Fjord 01';
+
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<WorkloadFormData>(defaultFormData);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -93,9 +111,9 @@ export function Workloads(): React.ReactElement {
     },
   });
 
-  // 3. Mutation for triggering the multi-dimensional scheduling pipeline
+  // 3. Mutation for triggering the multi-dimensional scheduling pipeline with active datacenter
   const runSchedulerMutation = useMutation({
-    mutationFn: (dataCenterId?: string) => runScheduler(dataCenterId || 'oslo-fjord-1'),
+    mutationFn: (targetDcId?: string) => runScheduler(targetDcId || activeDcId),
     onSuccess: (result) => {
       setSchedulingResult(result);
       setScheduleError(null);
@@ -142,16 +160,36 @@ export function Workloads(): React.ReactElement {
       setValidationError('CPU cores must be a positive integer');
       return;
     }
+    if (cpuCores > 1024) {
+      setValidationError('CPU cores cannot exceed 1024');
+      return;
+    }
     if (isNaN(memoryGb) || memoryGb <= 0) {
       setValidationError('Memory (GB) must be a positive number');
+      return;
+    }
+    if (memoryGb > 8192) {
+      setValidationError('Memory (GB) cannot exceed 8192');
       return;
     }
     if (isNaN(durationMinutes) || durationMinutes <= 0) {
       setValidationError('Duration (minutes) must be a positive integer');
       return;
     }
+    if (durationMinutes > 100000) {
+      setValidationError('Duration cannot exceed 100,000 minutes');
+      return;
+    }
     if (isNaN(energyKwh) || energyKwh < 0) {
       setValidationError('Energy consumption must be non-negative');
+      return;
+    }
+    if (energyKwh > 100000) {
+      setValidationError('Estimated energy cannot exceed 100,000 kWh');
+      return;
+    }
+    if (dataSizeGb > 100000) {
+      setValidationError('Input data cannot exceed 100,000 GB');
       return;
     }
     if (!form.arrival || !form.deadline) {
@@ -223,6 +261,9 @@ export function Workloads(): React.ReactElement {
             Workloads persisted in Supabase via Drizzle ORM and scheduled across clean energy windows
             using multi-dimensional Segment Trees.
           </p>
+          <p className="mt-1 font-mono text-xs text-slate-500">
+            Target Datacenter: <strong className="text-slate-800">{activeDcName}</strong> ({activeDcId})
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <button
@@ -236,10 +277,10 @@ export function Workloads(): React.ReactElement {
             {isFetching ? 'Syncing...' : 'Refresh'}
           </button>
           <button
-            onClick={() => runSchedulerMutation.mutate('oslo-fjord-1')}
+            onClick={() => runSchedulerMutation.mutate(activeDcId)}
             disabled={runSchedulerMutation.isPending || pendingCount === 0}
             className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50"
-            title={pendingCount === 0 ? 'No pending workloads to schedule' : `Schedule ${pendingCount} pending job(s)`}
+            title={pendingCount === 0 ? 'No pending workloads to schedule' : `Schedule ${pendingCount} pending job(s) for ${activeDcName}`}
             data-testid="button-run-scheduler"
           >
             {runSchedulerMutation.isPending ? (
@@ -279,81 +320,104 @@ export function Workloads(): React.ReactElement {
       )}
 
       {/* Scheduling Result Output Card */}
-      {schedulingResult && (
-        <div className="overflow-hidden rounded-2xl border border-emerald-200 bg-emerald-50/70 p-6 shadow-sm">
-          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white">
-                  <Check size={14} />
-                </span>
-                <h3 className="text-lg font-bold text-emerald-950">
-                  Scheduling Pipeline Executed: {schedulingResult.dataCenterName}
-                </h3>
+      {schedulingResult && (() => {
+        const cleanKwh = Number(
+          schedulingResult.metrics?.totalScheduledEnergyKwh ??
+          (schedulingResult.metrics as any)?.cleanEnergyAllocatedKwh ??
+          (schedulingResult as any)?.cleanEnergyAllocatedKwh ??
+          (schedulingResult as any)?.cleanKwh ??
+          0
+        );
+
+        const resultTotalKwh = Number(
+          (schedulingResult as any)?.totalKwh ??
+          (schedulingResult.metrics as any)?.totalKwh ??
+          ((schedulingResult.scheduledWorkloads?.reduce((sum, w) => sum + (w.energyKwh || 0), 0) ?? 0) +
+           (schedulingResult.unscheduledWorkloads?.reduce((sum, w) => sum + (w.energyKwh || 0), 0) ?? 0))
+        );
+
+        const totalKwh = resultTotalKwh > 0 ? resultTotalKwh : (totalEnergy || cleanKwh || 1);
+
+        const renewableUtilizationPct = (cleanKwh > 0 && totalKwh > 0)
+          ? Math.min(100, Math.max(0, Math.round((cleanKwh / totalKwh) * 100)))
+          : (schedulingResult.metrics?.renewableUtilizationPct || 0);
+
+        return (
+          <div className="overflow-hidden rounded-2xl border border-emerald-200 bg-emerald-50/70 p-6 shadow-sm">
+            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white">
+                    <Check size={14} />
+                  </span>
+                  <h3 className="text-lg font-bold text-emerald-950">
+                    Scheduling Pipeline Executed: {schedulingResult.dataCenterName || activeDcName}
+                  </h3>
+                </div>
+                <p className="mt-1 font-mono text-xs text-emerald-800">
+                  Run ID: {schedulingResult.runId} · Facility: {activeDcName} ({activeDcId}) · Evaluated: {schedulingResult.metrics.totalEvaluated} jobs
+                </p>
               </div>
-              <p className="mt-1 font-mono text-xs text-emerald-800">
-                Run ID: {schedulingResult.runId} · Evaluated: {schedulingResult.metrics.totalEvaluated} jobs
-              </p>
+              <button
+                onClick={() => setSchedulingResult(null)}
+                className="self-start rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+              >
+                Dismiss Report
+              </button>
             </div>
-            <button
-              onClick={() => setSchedulingResult(null)}
-              className="self-start rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
-            >
-              Dismiss Report
-            </button>
-          </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-xl border border-emerald-200 bg-white/80 p-3">
-              <span className="text-[11px] font-semibold text-emerald-700">Scheduled Jobs</span>
-              <p className="mt-1 text-xl font-bold text-emerald-900">
-                {schedulingResult.metrics.totalScheduled} / {schedulingResult.metrics.totalEvaluated}
-              </p>
-              <span className="text-[10px] text-emerald-600">
-                {schedulingResult.metrics.successRatePct}% Success Rate
-              </span>
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="rounded-xl border border-emerald-200 bg-white/80 p-3">
+                <span className="text-[11px] font-semibold text-emerald-700">Scheduled Jobs</span>
+                <p className="mt-1 text-xl font-bold text-emerald-900">
+                  {schedulingResult.metrics.totalScheduled} / {schedulingResult.metrics.totalEvaluated}
+                </p>
+                <span className="text-[10px] text-emerald-600">
+                  {schedulingResult.metrics.successRatePct}% Success Rate
+                </span>
+              </div>
+              <div className="rounded-xl border border-emerald-200 bg-white/80 p-3">
+                <span className="text-[11px] font-semibold text-emerald-700">Clean Energy Allocated</span>
+                <p className="mt-1 text-xl font-bold text-emerald-900">
+                  {cleanKwh} kWh
+                </p>
+                <span className="text-[10px] text-emerald-600">Displaced fossil baseline</span>
+              </div>
+              <div className="rounded-xl border border-emerald-200 bg-white/80 p-3">
+                <span className="text-[11px] font-semibold text-emerald-700">Renewable Utilization</span>
+                <p className="mt-1 text-xl font-bold text-emerald-900">
+                  {renewableUtilizationPct}%
+                </p>
+                <span className="text-[10px] text-emerald-600">Headroom absorbed</span>
+              </div>
+              <div className="rounded-xl border border-emerald-200 bg-white/80 p-3">
+                <span className="text-[11px] font-semibold text-emerald-700">CO₂ Avoided</span>
+                <p className="mt-1 text-xl font-bold text-emerald-900">
+                  {schedulingResult.metrics.estimatedCo2AvoidedKg} kg
+                </p>
+                <span className="text-[10px] text-emerald-600">Carbon reduction</span>
+              </div>
             </div>
-            <div className="rounded-xl border border-emerald-200 bg-white/80 p-3">
-              <span className="text-[11px] font-semibold text-emerald-700">Clean Energy Allocated</span>
-              <p className="mt-1 text-xl font-bold text-emerald-900">
-                {schedulingResult.metrics.totalScheduledEnergyKwh} kWh
-              </p>
-              <span className="text-[10px] text-emerald-600">Displaced fossil baseline</span>
-            </div>
-            <div className="rounded-xl border border-emerald-200 bg-white/80 p-3">
-              <span className="text-[11px] font-semibold text-emerald-700">Renewable Utilization</span>
-              <p className="mt-1 text-xl font-bold text-emerald-900">
-                {schedulingResult.metrics.renewableUtilizationPct}%
-              </p>
-              <span className="text-[10px] text-emerald-600">Headroom absorbed</span>
-            </div>
-            <div className="rounded-xl border border-emerald-200 bg-white/80 p-3">
-              <span className="text-[11px] font-semibold text-emerald-700">CO₂ Avoided</span>
-              <p className="mt-1 text-xl font-bold text-emerald-900">
-                {schedulingResult.metrics.estimatedCo2AvoidedKg} kg
-              </p>
-              <span className="text-[10px] text-emerald-600">Carbon reduction</span>
-            </div>
-          </div>
 
-          {/* Unscheduled Workloads Warnings */}
-          {schedulingResult.unscheduledWorkloads.length > 0 && (
-            <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
-              <p className="font-bold flex items-center gap-1.5 text-amber-900">
-                <AlertCircle size={14} className="text-amber-700" />
-                Unscheduled Jobs Due to Resource Exhaustion ({schedulingResult.unscheduledWorkloads.length}):
-              </p>
-              <ul className="mt-1.5 list-disc pl-5 space-y-1">
-                {schedulingResult.unscheduledWorkloads.map((un) => (
-                  <li key={un.id}>
-                    <strong>{un.name}</strong> ({un.cpuCores} cores, {un.memoryGb} GB): {un.reason}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
+            {/* Unscheduled Workloads Warnings */}
+            {schedulingResult.unscheduledWorkloads.length > 0 && (
+              <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+                <p className="font-bold flex items-center gap-1.5 text-amber-900">
+                  <AlertCircle size={14} className="text-amber-700" />
+                  Unscheduled Jobs Due to Resource Exhaustion ({schedulingResult.unscheduledWorkloads.length}):
+                </p>
+                <ul className="mt-1.5 list-disc pl-5 space-y-1">
+                  {schedulingResult.unscheduledWorkloads.map((un) => (
+                    <li key={un.id}>
+                      <strong>{un.name}</strong> ({un.cpuCores} cores, {un.memoryGb} GB): {un.reason}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Summary Metrics */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -362,9 +426,9 @@ export function Workloads(): React.ReactElement {
             <span className="text-xs font-semibold">Active Workloads</span>
             <Layers size={16} className="text-[#1683ac]" />
           </div>
-          <div className="mt-3 text-2xl font-bold text-slate-900">{workloads.length}</div>
+          <div className="mt-3 text-2xl font-bold text-slate-900">{formatCompactNumber(workloads.length)}</div>
           <div className="mt-1 text-xs text-slate-500">
-            {pendingCount} Pending · {scheduledCount} Scheduled
+            {formatCompactNumber(pendingCount)} Pending · {formatCompactNumber(scheduledCount)} Scheduled
           </div>
         </div>
 
@@ -373,7 +437,7 @@ export function Workloads(): React.ReactElement {
             <span className="text-xs font-semibold">Total Energy</span>
             <Zap size={16} className="text-amber-500" />
           </div>
-          <div className="mt-3 text-2xl font-bold text-slate-900">{totalEnergy.toFixed(1)} kWh</div>
+          <div className="mt-3 text-2xl font-bold text-slate-900">{formatCompactNumber(totalEnergy)} kWh</div>
           <div className="mt-1 text-xs text-slate-500">Estimated power draw</div>
         </div>
 
@@ -382,7 +446,7 @@ export function Workloads(): React.ReactElement {
             <span className="text-xs font-semibold">CPU Cores</span>
             <Cpu size={16} className="text-indigo-500" />
           </div>
-          <div className="mt-3 text-2xl font-bold text-slate-900">{totalCores}</div>
+          <div className="mt-3 text-2xl font-bold text-slate-900">{formatCompactNumber(totalCores)}</div>
           <div className="mt-1 text-xs text-slate-500">Compute demand</div>
         </div>
 
@@ -391,7 +455,7 @@ export function Workloads(): React.ReactElement {
             <span className="text-xs font-semibold">Total Memory</span>
             <HardDrive size={16} className="text-emerald-500" />
           </div>
-          <div className="mt-3 text-2xl font-bold text-slate-900">{totalMemory.toFixed(0)} GB</div>
+          <div className="mt-3 text-2xl font-bold text-slate-900">{formatCompactNumber(totalMemory)} GB</div>
           <div className="mt-1 text-xs text-slate-500">Allocated memory</div>
         </div>
       </div>
@@ -580,6 +644,7 @@ export function Workloads(): React.ReactElement {
                   <input
                     type="number"
                     min="1"
+                    max="1024"
                     required
                     value={form.cpuCores}
                     onChange={(e) => setForm({ ...form, cpuCores: e.target.value })}
@@ -593,6 +658,7 @@ export function Workloads(): React.ReactElement {
                     type="number"
                     step="0.5"
                     min="0.5"
+                    max="8192"
                     required
                     value={form.memoryGb}
                     onChange={(e) => setForm({ ...form, memoryGb: e.target.value })}
@@ -608,6 +674,7 @@ export function Workloads(): React.ReactElement {
                   <input
                     type="number"
                     min="1"
+                    max="100000"
                     required
                     value={form.durationMinutes}
                     onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })}
@@ -621,6 +688,7 @@ export function Workloads(): React.ReactElement {
                     type="number"
                     step="0.1"
                     min="0"
+                    max="100000"
                     required
                     value={form.energyKwh}
                     onChange={(e) => setForm({ ...form, energyKwh: e.target.value })}
@@ -689,6 +757,7 @@ export function Workloads(): React.ReactElement {
                     type="number"
                     step="0.1"
                     min="0"
+                    max="100000"
                     value={form.dataSizeGb}
                     onChange={(e) => setForm({ ...form, dataSizeGb: e.target.value })}
                     className="mt-1.5 w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm text-slate-900 outline-none focus:border-[#1683ac]"
