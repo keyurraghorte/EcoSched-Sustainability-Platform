@@ -266,38 +266,108 @@ export const sampleWorkloads: WorkloadInsert[] = [
  */
 export async function seed(): Promise<void> {
   console.log("🌱 Starting EcoSched database seeding...");
-  console.log(`📡 Target database host: ${process.env.DATABASE_URL ? new URL(process.env.DATABASE_URL.replace('postgresql://', 'http://')).host : 'Supabase (direct)'}`);
+  const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "https://zxadswmkubwjfqicdhzc.supabase.co";
+  const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_HO2VuWFuoBAYYACrPh5i-g_zMeIJhyi";
 
   const startTime = Date.now();
 
-  try {
-    console.log(`📦 Inserting ${sampleWorkloads.length} realistic enterprise workloads into Supabase...`);
+  // Try direct Postgres via Drizzle if DATABASE_URL is configured
+  if (process.env.DATABASE_URL) {
+    try {
+      console.log(`📡 Connecting to PostgreSQL via Drizzle at ${new URL(process.env.DATABASE_URL.replace('postgresql://', 'http://')).host}...`);
+      console.log(`📦 Inserting ${sampleWorkloads.length} realistic enterprise workloads...`);
 
-    const inserted = await db
-      .insert(workloadsTable)
-      .values(sampleWorkloads)
-      .returning();
+      const inserted = await db
+        .insert(workloadsTable)
+        .values(sampleWorkloads)
+        .returning();
+
+      const elapsed = Date.now() - startTime;
+      console.log(`✅ Successfully seeded ${inserted.length} cloud workloads via Drizzle in ${elapsed}ms:`);
+
+      inserted.forEach((item, index) => {
+        console.log(
+          `   ${index + 1}. [${item.priority}] ${item.name} (${item.cpuCores} cores, ${item.memoryGb} GB RAM, ${item.energyKwh} kWh, ${item.durationMinutes}m, ${item.dataSizeGb} GB data) - Status: ${item.status}`
+        );
+      });
+
+      await client.end({ timeout: 5 });
+      console.log("✨ Seeding completed successfully. Exiting.");
+      process.exit(0);
+    } catch (error) {
+      console.warn("⚠️ Direct PostgreSQL connection failed. Falling back to Supabase REST API...");
+      try {
+        await client.end({ timeout: 2 });
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  // Fallback: Seed via Supabase REST API
+  try {
+    console.log(`📡 Connecting to Supabase PostgREST at ${supabaseUrl}...`);
+    console.log(`📦 Inserting ${sampleWorkloads.length} realistic enterprise workloads via Supabase API...`);
+
+    const restPayload = sampleWorkloads.map((w) => ({
+      name: w.name,
+      priority: w.priority,
+      cpu_cores: w.cpuCores,
+      memory_gb: w.memoryGb,
+      duration_minutes: w.durationMinutes,
+      energy_kwh: w.energyKwh,
+      data_size_gb: w.dataSizeGb,
+      status: w.status,
+      arrival: w.arrival,
+      deadline: w.deadline,
+    }));
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      apikey: supabaseKey,
+      Prefer: "return=representation",
+    };
+
+    if (!supabaseKey.startsWith("sb_publishable_") && !supabaseKey.startsWith("sb_secret_")) {
+      headers["Authorization"] = `Bearer ${supabaseKey}`;
+    }
+
+    const response = await fetch(`${supabaseUrl}/rest/v1/workloads`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(restPayload),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Supabase REST seeding failed (${response.status}): ${errText}`);
+    }
+
+    const inserted = (await response.json()) as Array<{
+      id: string;
+      name: string;
+      priority: string;
+      cpu_cores: number;
+      memory_gb: number;
+      energy_kwh: number;
+      duration_minutes: number;
+      data_size_gb: number;
+      status: string;
+    }>;
 
     const elapsed = Date.now() - startTime;
-    console.log(`✅ Successfully seeded ${inserted.length} cloud workloads in ${elapsed}ms:`);
+    console.log(`✅ Successfully seeded ${inserted.length} cloud workloads via Supabase PostgREST in ${elapsed}ms:`);
 
     inserted.forEach((item, index) => {
       console.log(
-        `   ${index + 1}. [${item.priority}] ${item.name} (${item.cpuCores} cores, ${item.memoryGb} GB RAM, ${item.energyKwh} kWh, ${item.durationMinutes}m, ${item.dataSizeGb} GB data) - Status: ${item.status}`
+        `   ${index + 1}. [${item.priority}] ${item.name} (${item.cpu_cores} cores, ${item.memory_gb} GB RAM, ${item.energy_kwh} kWh, ${item.duration_minutes}m, ${item.data_size_gb} GB data) - Status: ${item.status}`
       );
     });
 
-    // Close the postgres connection pool cleanly
-    await client.end({ timeout: 5 });
     console.log("✨ Seeding completed successfully. Exiting.");
     process.exit(0);
   } catch (error) {
     console.error("❌ Failed to seed database workloads into Supabase:", error);
-    try {
-      await client.end({ timeout: 2 });
-    } catch {
-      // Ignore cleanup error on failure
-    }
     process.exit(1);
   }
 }
